@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { Roboto_Mono } from "next/font/google";
 import "./globals.css";
 
-const robotoMono = Roboto_Mono({
-	variable: "--font-roboto-sans",
-	subsets: ["latin"],
+const roboto = Roboto_Mono({
+	weight: ['400', '500', '600', '700'],
+	variable: '--font-roboto',
+	subsets: ['latin'],
 });
 
 export const metadata: Metadata = {
@@ -20,7 +21,7 @@ export default function RootLayout({
 	return (
 		<html lang="en">
 			<body
-				className={`${robotoMono.variable} ${robotoMono.variable} antialiased`}
+				className={`${roboto.variable} antialiased`}
 			>
 				{children}
 			</body>

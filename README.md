@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+[//]: # "header"
+<h1 align="center">RepitCode - Coding for Fun</h1>
 
-## Getting Started
+[//]: # "le tech stack"
+<div align="center">
+   <img src="https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+   <img src="https://img.shields.io/badge/github%20actions-%232671E5.svg?style=for-the-badge&logo=githubactions&logoColor=white" alt="GitHub Actions" />
+</div>
 
-First, run the development server:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+[//]: # "catch"
+<p align="center">
+   A web app to get you into the groove and track what you'd want to learn within the field of software engineering.
+</p>
+
+## Why was this made? 🤔💭
+* I myself sometimes lose sight of what I would want to continue learning throughout my semesters at university, so having an application track the progress and information of the skills I want to uplevel would be handy!
+* Allowing others to get into the groove of learning software engineering via spaced repetition, consistent practice, and an application to keep them responsbile would be highly fulfilling NGL!
+
+## Screenshots of the application! 😲🚀
+
+## How do I run this locally? 💚🙂
+> [!NOTE]\
+> This program is fully hosted right now via localhost and packages by a Docker container! In the future, this likely will be moved to GCP because UIUC gave me free credits LOL
+>
+> Click -> [here](https://docs.docker.com/desktop/install/windows-install/) to go to the installation page.
+
+With Docker Desktop installed and opened, you can run these commands at the root directory of this GitHub repo...
+```shell
+# if you are running this for the first time, or have made changes and want to see it take affect on its deployment, use this
+docker compose up -d --build
+# starts the application in its detached state
+docker compose up -d
+# turns off the application
+docker compose down
+# wipes the container clean, effectively deleting the volumes for the database
+docker compose down -v
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Get in touch 💬
+If you liked what you saw, feel free to contact me! email: emoral435@gmail.com
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+[Star Logs 🚀](https://starlogs.dev/emoral435/RepetiCode)
