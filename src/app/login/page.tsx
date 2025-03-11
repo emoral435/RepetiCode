@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react'
 import EmailForm from '../components/email-form';
-import { GoogleAuthenticator } from '../lib/auth';
+import { GithubAuthenticator, GoogleAuthenticator } from '../lib/auth';
 import { redirect } from "next/navigation";
 import { auth } from '../lib/firebase-config';
 
@@ -32,7 +32,10 @@ const Login = () => {
         <div className="mt-4 bg-gray-800 p-4 rounded-lg">
           <details>
             <summary className="cursor-pointer text-lg">Login with GitHub</summary>
-            <button className="mt-2 w-full bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded">Log in with GitHub</button>
+            <button className="mt-2 w-full bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded" onClick={async () => {
+              await GithubAuthenticator();
+              redirect('/home');
+            }}>Log in with GitHub</button>
           </details>
         </div>
       </div>
