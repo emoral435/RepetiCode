@@ -2,7 +2,11 @@
 FROM golang:1.23-bookworm AS go-builder
 
 # we get our main module as a binary from the source
-RUN go install github.com/emoral435/repeticode@latest
+WORKDIR /app
+COPY ./go.mod ./go.sum ./
+RUN go mod download
+COPY ./*.go ./
+RUN CGO_ENABLED=0 GOOS=linux go build -o /repeticode
 
 # build using node and vite
 FROM node:21.6.2 AS frontend-builder
@@ -11,7 +15,7 @@ FROM node:21.6.2 AS frontend-builder
 WORKDIR /app/frontend
 
 # copy our frontend react app to the container
-COPY ./frontend .
+COPY ./frontend/ .
 
 # produces our static HTML 'dist' folder, redirected to: /app/frontend
 RUN npm i && npm run build
@@ -25,13 +29,14 @@ RUN mkdir -p frontend/dist
 
 COPY --from=go-builder \
       # copy our binary over
-      /go/bin/repeticode \
+      /repeticode \
       .
 
 COPY --from=frontend-builder \
       # copy over our static html files
-      /app/frontend/dist/ \
-      .frontend/dist
+      /app/frontend/dist \
+      ./frontend/dist
 
+EXPOSE 3000
 # run our binary
 CMD ["./repeticode"]

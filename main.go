@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 )
 
 func main() {
@@ -12,7 +13,14 @@ func main() {
 	m := http.NewServeMux()
 	directoryPath := "./frontend/dist/"
 
-	log.Printf("Serving on '/' static files from %s\n", directoryPath)
+	port := ""
+	if os.Getenv("PORT") == "" {
+		port = ":3000"
+	} else {
+		port = os.Getenv("PORT")
+	}
+
+	log.Printf("Serving on '/' static files from %s on port %s\n", directoryPath, port)
 	m.Handle(
 		"/",
 		http.StripPrefix(
@@ -24,7 +32,7 @@ func main() {
 	)
 
 	s := &http.Server{
-		Addr:    ":3000",
+		Addr:    port,
 		Handler: m,
 	}
 
