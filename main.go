@@ -17,7 +17,7 @@ func main() {
 	if os.Getenv("PORT") == "" {
 		port = ":3000"
 	} else {
-		port = os.Getenv("PORT")
+		port = ":" + os.Getenv("PORT")
 	}
 
 	log.Printf("Serving on '/' static files from %s on port %s\n", directoryPath, port)
