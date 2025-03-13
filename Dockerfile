@@ -37,6 +37,5 @@ COPY --from=frontend-builder \
       /app/frontend/dist \
       ./frontend/dist
 
-EXPOSE 3000
 # run our binary
 CMD ["./repeticode"]
