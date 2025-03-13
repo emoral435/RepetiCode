@@ -1,0 +1,13 @@
+@import '@fontsource-variable/roboto-slab';
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+body {
+  font-family: 'Roboto Slab Variable', serif;
+}
