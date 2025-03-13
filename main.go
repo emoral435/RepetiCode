@@ -41,7 +41,7 @@ func main() {
 	port := os.Getenv("PORT")
 	intPort, err := strconv.Atoi(port)
 	if err != nil {
-		intPort = 3000
+		intPort = 8080
 	}
 
 	cfg := &config{

@@ -37,5 +37,7 @@ COPY --from=frontend-builder \
       /app/frontend/dist \
       ./frontend/dist
 
+ARG PORT
+EXPOSE ${PORT}
 # run our binary
 CMD ["./repeticode"]
