@@ -62,6 +62,17 @@ func main() {
 		logger: logger,
 	}
 
+	logger.Info("checking static files", "path", cfg.dirPath)
+	if _, err := os.Stat(cfg.dirPath); os.IsNotExist(err) {
+		logger.Error("static files directory not found", "path", cfg.dirPath)
+		os.Exit(1)
+	}
+
+	logger.Info("initializing server",
+		"port", cfg.port,
+		"static_path", cfg.dirPath,
+	)
+
 	// create the server
 	srv := &http.Server{
 		Addr:         fmt.Sprintf("0.0.0.0:%d", cfg.port),
