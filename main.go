@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"time"
 )
 
 type config struct {
@@ -75,12 +74,9 @@ func main() {
 
 	// create the server
 	srv := &http.Server{
-		Addr:         fmt.Sprintf("0.0.0.0:%d", cfg.port),
-		Handler:      app.routes(cfg),
-		IdleTimeout:  45 * time.Second,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
+		Addr:     fmt.Sprintf("0.0.0.0:%d", cfg.port),
+		Handler:  app.routes(cfg),
+		ErrorLog: slog.NewLogLogger(logger.Handler(), slog.LevelError),
 	}
 
 	logger.Info("server started", "addr", srv.Addr)
