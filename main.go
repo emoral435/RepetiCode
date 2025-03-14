@@ -21,15 +21,19 @@ type application struct {
 
 func (a *application) routes(cfg *config) *http.ServeMux {
 	m := http.NewServeMux()
-	m.Handle(
-		"/",
-		http.StripPrefix(
-			"/",
-			http.FileServer(
-				http.Dir(cfg.dirPath), // e.g. "../vue-go/dist"  vue.js's html/css/js build directory
-			),
-		),
-	)
+	// m.Handle(
+	// 	"/",
+	// 	http.StripPrefix(
+	// 		"/",
+	// 		http.FileServer(
+	// 			http.Dir(cfg.dirPath), // e.g. "../vue-go/dist"  vue.js's html/css/js build directory
+	// 		),
+	// 	),
+	// )
+
+	m.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Hello!")
+	})
 
 	return m
 }
@@ -60,7 +64,7 @@ func main() {
 
 	// create the server
 	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.port),
+		Addr:         fmt.Sprintf("0.0.0.0:%d", cfg.port),
 		Handler:      app.routes(cfg),
 		IdleTimeout:  45 * time.Second,
 		ReadTimeout:  5 * time.Second,
