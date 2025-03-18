@@ -5,84 +5,34 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"strconv"
 )
 
-type config struct {
-	dirPath string
-	port    int
-}
-
-type application struct {
-	config *config
-	logger *slog.Logger
-}
-
-func (a *application) routes(cfg *config) *http.ServeMux {
-	m := http.NewServeMux()
-	// m.Handle(
-	// 	"/",
-	// 	http.StripPrefix(
-	// 		"/",
-	// 		http.FileServer(
-	// 			http.Dir(cfg.dirPath), // e.g. "../vue-go/dist"  vue.js's html/css/js build directory
-	// 		),
-	// 	),
-	// )
-
-	m.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello!")
-	})
-
-	return m
-}
-
 func main() {
-	dirPath := "./frontend/dist/"
-
-	// Try to read environment variable for port (given by railway). Otherwise use default
-	port := os.Getenv("PORT")
-	intPort, err := strconv.Atoi(port)
-	if err != nil {
-		intPort = 8080
-	}
-
+	// Set port environment variable, given by Railway, to 8080
 	cfg := &config{
-		dirPath,
-		intPort,
+		frontendBuildPath: "./frontend/dist/",
+		port:              8080,
 	}
 
 	// create the logger
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-
-	// create the application
-	app := &application{
+	// create the application after obtaining all configuration settings from the environment
+	app := &Application{
 		config: cfg,
-		logger: logger,
+		Logger: logger,
 	}
-
-	logger.Info("checking static files", "path", cfg.dirPath)
-	if _, err := os.Stat(cfg.dirPath); os.IsNotExist(err) {
-		logger.Error("static files directory not found", "path", cfg.dirPath)
-		os.Exit(1)
-	}
-
-	logger.Info("initializing server",
-		"port", cfg.port,
-		"static_path", cfg.dirPath,
-	)
 
 	// create the server
 	srv := &http.Server{
-		Addr:     fmt.Sprintf("0.0.0.0:%d", cfg.port),
-		Handler:  app.routes(cfg),
+		Addr:     fmt.Sprintf("0.0.0.0:%d", app.config.port),
+		Handler:  app.Routes(),
 		ErrorLog: slog.NewLogLogger(logger.Handler(), slog.LevelError),
 	}
 
-	logger.Info("server started", "addr", srv.Addr)
+	logger.Info("starting the server", "port", app.config.port, "serving the frontend from the path", cfg.frontendBuildPath)
 
 	// Start the server
-	err = srv.ListenAndServe()
+	err := srv.ListenAndServe()
 	logger.Error(err.Error())
 	os.Exit(1)
 }
