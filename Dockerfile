@@ -32,7 +32,7 @@ COPY --from=go-builder \
       /repeticode \
       .
 
-COPY .env /app/
+COPY Makefile .env* /app/
 
 COPY --from=frontend-builder \
       # copy over our static html files
