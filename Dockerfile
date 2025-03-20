@@ -3,9 +3,9 @@ FROM golang:1.23-bookworm AS go-builder
 
 # we get our main module as a binary from the source
 WORKDIR /app
-COPY ./go.mod ./go.sum ./
+COPY go.mod go.sum ./
 RUN go mod download
-COPY ./*.go ./
+COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o /repeticode
 
 # build using node and vite
@@ -31,6 +31,8 @@ COPY --from=go-builder \
       # copy our binary over
       /repeticode \
       .
+
+COPY .env /app/
 
 COPY --from=frontend-builder \
       # copy over our static html files
