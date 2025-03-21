@@ -17,7 +17,6 @@ type config struct {
 	frontendBuildPath string
 	port              int
 	ctx               context.Context
-	env               map[string]string
 }
 
 type server struct {
@@ -69,7 +68,6 @@ func (s *server) serveFrontend(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) authCallback(w http.ResponseWriter, r *http.Request) {
 	provider := r.PathValue("provider")
-	fmt.Printf("Provider is: %s\n", provider)
 	r = r.WithContext(context.WithValue(s.config.ctx, "provider", provider))
 	user, err := gothic.CompleteUserAuth(w, r)
 	if err != nil {
@@ -82,7 +80,6 @@ func (s *server) authCallback(w http.ResponseWriter, r *http.Request) {
 }
 func (s *server) authProviderLogout(w http.ResponseWriter, r *http.Request) {
 	provider := r.PathValue("provider")
-	fmt.Printf("Provider is: %s\n", provider)
 	r = r.WithContext(context.WithValue(s.config.ctx, "provider", provider))
 	gothic.Logout(w, r)
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
@@ -90,7 +87,6 @@ func (s *server) authProviderLogout(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) authProviderLogin(w http.ResponseWriter, r *http.Request) {
 	provider := r.PathValue("provider")
-	fmt.Printf("Provider is: %s\n", provider)
 	r = r.WithContext(context.WithValue(s.config.ctx, "provider", provider))
 	// try to get the user without re-authenticating
 	if user, err := gothic.CompleteUserAuth(w, r); err == nil {
