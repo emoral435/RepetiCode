@@ -16,20 +16,11 @@ func main() {
 
 	// get our keys from the environment
 	key := os.Getenv("HASHING_KEY")
-	if key == "" {
-		logger.Error(fmt.Errorf("error in getting the hashing key, key detected as: %v", key).Error())
-		os.Exit(1)
-	}
-
 	googleClientId := os.Getenv("GOOGLE_CLIENT_ID")
-	if googleClientId == "" {
-		logger.Error(fmt.Errorf("error in getting the google client id, found: %v", googleClientId).Error())
-		os.Exit(1)
-	}
-
 	googleClientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
-	if googleClientSecret == "" {
-		logger.Error(fmt.Errorf("error in getting the google client secret, found: %v", googleClientSecret).Error())
+
+	if err := auth.InitAuth(key, googleClientId, googleClientSecret); err != nil {
+		logger.Error(fmt.Errorf("error in trying to init auth: %w", err).Error())
 		os.Exit(1)
 	}
 
@@ -44,11 +35,6 @@ func main() {
 	sv := &server{
 		config: cfg,
 		Logger: logger,
-	}
-
-	if err := auth.InitAuth(key, googleClientId, googleClientSecret); err != nil {
-		logger.Error(fmt.Errorf("error in trying to init auth: %w", err).Error())
-		os.Exit(1)
 	}
 
 	// create the server

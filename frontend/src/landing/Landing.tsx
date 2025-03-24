@@ -7,15 +7,7 @@ const Landing = () => {
         <h1 className="text-5xl font-extrabold text-blue-400 mb-4 drop-shadow-lg">RepetiCode</h1>
         <p className="text-xl text-gray-300">Keep Hacking Away at Software Engineering</p>
         <p className="text-lg text-gray-400 mt-1">Bit By Bit</p>
-
-        {/* Stylish Button Container */}
         <div className="mt-6 flex justify-center space-x-4">
-          <Link
-            to="/register"
-            className="px-6 py-3 bg-blue-500 rounded-full text-lg font-semibold text-white shadow-md hover:bg-blue-600 hover:shadow-lg transition duration-300 transform hover:scale-105"
-          >
-            Register
-          </Link>
           <Link
             to="/login"
             className="px-6 py-3 bg-gray-700 rounded-full text-lg font-semibold text-white shadow-md hover:bg-gray-600 hover:shadow-lg transition duration-300 transform hover:scale-105"

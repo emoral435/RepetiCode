@@ -9,19 +9,22 @@ check-coverage: install-go-test-coverage
 	go test ./... -coverprofile=./cover.out -covermode=atomic -coverpkg=./...
 	${GOBIN}/go-test-coverage --config=./.testcoverage.yml
 
-.PHONY: rundocker builddocker run gotest
+.PHONY: builddocker
 builddocker:
-	docker build --no-cache -t repeticode .
+	docker build -t repeticode .
 
 .PHONY: rundocker
 rundocker:
 	docker run --env-file .env -p 8080:8080 repeticode
 
-.PHONY: run
-run:
+.PHONY: buildfrontend
+buildfrontend:
 	cd frontend ; npm run build
+
+.PHONY: run
+run: buildfrontend builddocker rundocker
 	echo "Running on 127.0.0.1:8080"
-	go run .
+
 
 .PHONY: gotest
 gotest:
