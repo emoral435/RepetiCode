@@ -13,20 +13,13 @@ const (
 	MaxAge = 86400 * 7 // save for 7 days
 )
 
-func InitAuth(env map[string]string) error {
-	key, ok := env["HASHING_KEY"]
-	if !ok {
-		return fmt.Errorf("error in getting the hashing key: %v", ok)
-	}
-
-	googleClientId, ok := env["GOOGLE_CLIENT_ID"]
-	if !ok {
-		return fmt.Errorf("error in getting the google client id: %v", ok)
-	}
-
-	googleClientSecret, ok := env["GOOGLE_CLIENT_SECRET"]
-	if !ok {
-		return fmt.Errorf("error in getting the google client secret: %v", ok)
+func InitAuth(key, googleClientId, googleClientSecret string) error {
+	if key == "" {
+		return fmt.Errorf("missing required key environment variable: HASHING_KEY: %s", key)
+	} else if googleClientId == "" {
+		return fmt.Errorf("missing required key environment variable: GOOGLE_CLIENT_ID: %s", googleClientId)
+	} else if googleClientSecret == "" {
+		return fmt.Errorf("missing required key environment variable: GOOGLE_CLIENT_SECRET: %s", googleClientSecret)
 	}
 
 	store := sessions.NewCookieStore([]byte(key))

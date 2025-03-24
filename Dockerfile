@@ -32,8 +32,6 @@ COPY --from=go-builder \
       /repeticode \
       .
 
-COPY Makefile .env* /app/
-
 COPY --from=frontend-builder \
       # copy over our static html files
       /app/frontend/dist \
