@@ -37,6 +37,8 @@ COPY --from=frontend-builder \
       /app/frontend/dist \
       ./frontend/dist
 
+COPY Makefile .env* /app/
+
 EXPOSE 8080
 # run our binary
 CMD ["./repeticode"]

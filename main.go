@@ -8,14 +8,12 @@ import (
 	"os"
 
 	"github.com/emoral435/repeticode/auth"
-	"github.com/joho/godotenv"
 )
 
 func main() {
 	// create the logger
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	godotenv.Load()
 	// get our keys from the environment
 	key := os.Getenv("HASHING_KEY")
 	if key == "" {
