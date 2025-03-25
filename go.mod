@@ -14,6 +14,7 @@ require (
 	github.com/alexflint/go-arg v1.4.3 // indirect
 	github.com/alexflint/go-scalar v1.1.0 // indirect
 	github.com/aws/aws-sdk-go v1.49.4 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-github/v56 v56.0.0 // indirect
@@ -23,6 +24,8 @@ require (
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/narqo/go-badge v0.0.0-20230821190521-c9a75c019a59 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/vladopajic/go-test-coverage/v2 v2.12.0 // indirect
 	golang.org/x/image v0.18.0 // indirect
 	golang.org/x/oauth2 v0.17.0 // indirect

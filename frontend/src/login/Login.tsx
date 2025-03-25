@@ -1,6 +1,6 @@
 const Login = () => {
-  const handleLogin = () => {
-    window.location.href = window.location.href.replace("/login", "") + "/auth/google";
+  const handleLogin = (provider: string) => {
+    window.location.href = window.location.href.replace("/login", "") + "/auth/" + provider;
   }
 
   return (
@@ -10,14 +10,14 @@ const Login = () => {
         <div className="mt-4 bg-gray-800 p-4 rounded-lg">
           <details>
             <summary className="cursor-pointer text-lg">Login with Google</summary>
-            <button className="mt-2 w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded" onClick={() => handleLogin()}>Log in with Google</button>
+            <button className="mt-2 w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded" onClick={() => handleLogin("google")}>Log in with Google</button>
           </details>
         </div>
 
         <div className="mt-4 bg-gray-800 p-4 rounded-lg">
           <details>
             <summary className="cursor-pointer text-lg">Login with GitHub</summary>
-            <button className="mt-2 w-full bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded">Log in with GitHub</button>
+            <button className="mt-2 w-full bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded" onClick={() => handleLogin("github")}>Log in with GitHub</button>
           </details>
         </div>
       </div>
