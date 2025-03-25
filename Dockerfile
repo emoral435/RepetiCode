@@ -37,10 +37,13 @@ COPY --from=frontend-builder \
       /app/frontend/dist \
       ./frontend/dist
 
-# get the environment variables we need during our application
-ARG HASHING_KEY GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET
+RUN apt-get update && apt-get install -y ca-certificates
 
-ENV HASHING_KEY=$HASHING_KEY GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET
+
+# # get the environment variables we need during our application
+# ARG HASHING_KEY GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET
+
+# ENV HASHING_KEY=$HASHING_KEY GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET
 
 # railway env variables
 ARG RAILWAY_PUBLIC_DOMAIN
@@ -51,6 +54,7 @@ ARG RAILWAY_SERVICE_NAME
 ARG RAILWAY_PROJECT_ID
 ARG RAILWAY_ENVIRONMENT_ID
 ARG RAILWAY_SERVICE_ID
+
 # app env variables
 ARG HASHING_KEY
 ARG GOOGLE_CLIENT_ID

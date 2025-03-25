@@ -1,7 +1,6 @@
 const Login = () => {
   const handleLogin = () => {
-    let host: string = window.location.protocol + "//" + window.location.host;
-    window.location.href = host + "/auth/google";
+    window.location.href = window.location.href.replace("/login", "") + "/auth/google";
   }
 
   return (
