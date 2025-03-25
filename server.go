@@ -74,14 +74,15 @@ func (s *server) authCallback(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, err)
 		return
 	}
-	fmt.Println(user)
 
-	http.Redirect(w, r, "/register", http.StatusTemporaryRedirect)
+	fmt.Println(user)
+	http.Redirect(w, r, "/home", http.StatusTemporaryRedirect)
 }
 func (s *server) authProviderLogout(w http.ResponseWriter, r *http.Request) {
 	provider := r.PathValue("provider")
 	r = r.WithContext(context.WithValue(s.config.ctx, "provider", provider))
 	gothic.Logout(w, r)
+
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 }
 
