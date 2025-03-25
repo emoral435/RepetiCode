@@ -1,7 +1,7 @@
 const Login = () => {
   const handleLogin = () => {
-    console.log('Trying to login');
-    window.location.href = "http://127.0.0.1:8080/auth/google";
+    let host: string = window.location.protocol + "//" + window.location.host;
+    window.location.href = host + "/auth/google";
   }
 
   return (
@@ -11,7 +11,7 @@ const Login = () => {
         <div className="mt-4 bg-gray-800 p-4 rounded-lg">
           <details>
             <summary className="cursor-pointer text-lg">Login with Google</summary>
-            <button className="mt-2 w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded" onClick={() => handleLogin()}>Log in with Googleeee</button>
+            <button className="mt-2 w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded" onClick={() => handleLogin()}>Log in with Google</button>
           </details>
         </div>
 
