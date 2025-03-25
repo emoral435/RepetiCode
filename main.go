@@ -18,8 +18,10 @@ func main() {
 	key := os.Getenv("HASHING_KEY")
 	googleClientId := os.Getenv("GOOGLE_CLIENT_ID")
 	googleClientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
+	githubClientId := os.Getenv("GITHUB_CLIENT_ID")
+	githubSessionSecret := os.Getenv("GITHUB_SESSION_SECRET")
 
-	if err := auth.InitAuth(key, googleClientId, googleClientSecret); err != nil {
+	if err := auth.InitAuth(key, googleClientId, googleClientSecret, githubClientId, githubSessionSecret); err != nil {
 		logger.Error(fmt.Errorf("error in trying to init auth: %w", err).Error())
 		os.Exit(1)
 	}

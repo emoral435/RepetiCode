@@ -76,6 +76,7 @@ func (s *server) authCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Println(user)
+
 	http.Redirect(w, r, "/home", http.StatusTemporaryRedirect)
 }
 func (s *server) authProviderLogout(w http.ResponseWriter, r *http.Request) {
@@ -92,7 +93,7 @@ func (s *server) authProviderLogin(w http.ResponseWriter, r *http.Request) {
 	// try to get the user without re-authenticating
 	if user, err := gothic.CompleteUserAuth(w, r); err == nil {
 		fmt.Println(user)
-		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, "/home", http.StatusTemporaryRedirect)
 	} else {
 		gothic.BeginAuthHandler(w, r)
 	}
