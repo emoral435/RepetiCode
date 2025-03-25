@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/gorilla/sessions"
 	"github.com/markbates/goth"
@@ -26,8 +27,20 @@ func InitAuth(key, googleClientId, googleClientSecret string) error {
 	store.MaxAge(MaxAge)
 
 	gothic.Store = store
+
+	// choose the right host to redirect to
+	var googleCallbackUrl string
+	railwayDomain := os.Getenv("RAILWAY_PUBLIC_DOMAIN")
+	if railwayDomain != "" {
+		googleCallbackUrl = fmt.Sprintf("https://%s/auth/google/callback", railwayDomain)
+	} else {
+		googleCallbackUrl = "http://127.0.0.1:8080/auth/google/callback"
+	}
+
+	fmt.Printf("Our callback URL is: %s", googleCallbackUrl)
+
 	goth.UseProviders(
-		google.New(googleClientId, googleClientSecret, "http://127.0.0.1:8080/auth/google/callback"),
+		google.New(googleClientId, googleClientSecret, googleCallbackUrl),
 	)
 
 	return nil
