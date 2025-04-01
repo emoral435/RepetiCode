@@ -1,17 +1,19 @@
-name: Go
+name: Run Go Tests
 
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  pull_request: 
+    types: [opened, synchronize] 
 
 jobs:
   test-coverage:
     runs-on: ubuntu-latest
 
     steps:
-      - name: check test coverage
-        uses: vladopajic/go-test-coverage@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          config: .testcoverage.yml
+          go-version: stable
+      - name: Test
+        uses: robherley/go-test-action@v0
