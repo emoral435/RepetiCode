@@ -131,7 +131,12 @@ func (rtr *router) AuthProviderLogin(w http.ResponseWriter, r *http.Request) {
 
 func initEnvironmentVariables() (map[string]string, error) {
 	// if we are in local development mode, then use a package to load the environment variables
-	if os.Getenv("RAILWAY_PUBLIC_DOMAIN") == "" {
+	mode := os.Getenv("MODE")
+	if mode == "" {
+		return nil, fmt.Errorf("error when checking environment variable to indicate which environment mode we are running in: mode=%v", mode)
+	}
+
+	if mode == "development" {
 		err := godotenv.Load()
 		if err != nil {
 			return nil, fmt.Errorf("error loading .env file with godotenv: %w", err)
@@ -139,7 +144,7 @@ func initEnvironmentVariables() (map[string]string, error) {
 	}
 
 	env := make(map[string]string)
-	keys := []string{"HASHING_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
+	keys := []string{"MODE", "HASHING_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
 		"GITHUB_CLIENT_ID", "GITHUB_SESSION_SECRET", "RAILWAY_PUBLIC_DOMAIN",
 	}
 
