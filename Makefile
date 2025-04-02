@@ -29,3 +29,10 @@ run: buildfrontend builddocker rundocker
 .PHONY: gotest
 gotest:
 	go test ./... -v -coverprofile cover.out
+
+.PHONY: golint
+golint:
+	golangci-lint run
+
+.PHONY: gopackage
+gopackage: gotest golint

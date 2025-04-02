@@ -2,83 +2,62 @@ package auth
 
 import (
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/gorilla/sessions"
+	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
+	"github.com/stretchr/testify/assert"
 )
 
-func setupEnv() {
-	os.Setenv("HASHING_KEY", "testhashingkey")
-	os.Setenv("GOOGLE_CLIENT_ID", "testclientid")
-	os.Setenv("GOOGLE_CLIENT_SECRET", "testclientsecret")
-}
-
-func clearEnv() {
-	os.Unsetenv("HASHING_KEY")
-	os.Unsetenv("GOOGLE_CLIENT_ID")
-	os.Unsetenv("GOOGLE_CLIENT_SECRET")
-}
-
-func getEnvs() []string {
-	envs := []string{}
-	return append(envs, os.Getenv("HASHING_KEY"), os.Getenv("GOOGLE_CLIENT_ID"), os.Getenv("GOOGLE_CLIENT_SECRET"))
-}
-
-func TestInitAuth_Success(t *testing.T) {
-	setupEnv()
-	defer clearEnv()
-
-	envs := getEnvs()
-	err := InitAuth(envs[0], envs[1], envs[2])
-	if err != nil {
-		t.Fatalf("InitAuth failed: %v", err)
+func TestInitAuth(t *testing.T) {
+	// Mock environment variables
+	mockEnv := map[string]string{
+		"HASHING_KEY":           "test_hashing_key",
+		"GOOGLE_CLIENT_ID":      "test_google_client_id",
+		"GOOGLE_CLIENT_SECRET":  "test_google_client_secret",
+		"GITHUB_CLIENT_ID":      "test_github_client_id",
+		"GITHUB_SESSION_SECRET": "test_github_session_secret",
 	}
 
-	// Check if the session store was set correctly
-	if gothic.Store == nil {
-		t.Fatal("Expected gothic.Store to be initialized, but it is nil")
-	}
+	// Call InitAuth
+	InitAuth(mockEnv)
 
-	// Check if the session store is a CookieStore
-	if _, ok := gothic.Store.(*sessions.CookieStore); !ok {
-		t.Fatal("Expected gothic.Store to be of type *sessions.CookieStore")
-	}
+	// Verify session store is set
+	store, ok := gothic.Store.(*sessions.CookieStore)
+	assert.True(t, ok, "gothic.Store should be a *sessions.CookieStore")
+	assert.NotNil(t, store, "Session store should not be nil")
+
+	// Verify that providers are correctly registered
+	providers := goth.GetProviders()
+	assert.Contains(t, providers, "google", "Google provider should be registered")
+	assert.Contains(t, providers, "github", "GitHub provider should be registered")
 }
 
-func TestInitAuth_MissingHashingKey(t *testing.T) {
-	clearEnv()
-	os.Setenv("GOOGLE_CLIENT_ID", "testclientid")
-	os.Setenv("GOOGLE_CLIENT_SECRET", "testclientsecret")
+func TestCreateCallbackURLSRailway(t *testing.T) {
+	// Mock environment variables, alongside the railway environment variable
+	err := os.Setenv("RAILWAY_PUBLIC_DOMAIN", "test.example.com")
+	assert.NoError(t, err, "setting environment variable RAILWAY_PUBLIC_DOMAIN should not fail")
+	defer func() {
+		err = os.Unsetenv("RAILWAY_PUBLIC_DOMAIN")
+		assert.NoError(t, err, "cleaning environment variable RAILWAY_PUBLIC_DOMAIN should not fail")
+	}()
 
-	envs := getEnvs()
-	err := InitAuth("", envs[1], envs[2])
-	if err == nil || !strings.Contains(err.Error(), "missing required key environment variable: HASHING_KEY") {
-		t.Fatalf("Expected error due to missing HASHING_KEY, got: %v", err)
-	}
+	// run the function
+	cbMap := createCallbackURLS()
+
+	assert.NotNil(t, cbMap, "our callback map should not be empty, or not created")
+
+	assert.Equal(t, cbMap["google"], "https://test.example.com/auth/google/callback", "our callback map should be configuring the callback host url correclty")
+	assert.Contains(t, cbMap["github"], "github", "https://test.example.com/auth/github/callback")
 }
 
-func TestInitAuth_MissingGoogleClientId(t *testing.T) {
-	clearEnv()
-	os.Setenv("HASHING_KEY", "testhashingkey")
-	os.Setenv("GOOGLE_CLIENT_SECRET", "testclientsecret")
+func TestCreateCallbackURLSLocal(t *testing.T) {
+	// run the function, with no railway env variables
+	cbMap := createCallbackURLS()
 
-	envs := getEnvs()
-	err := InitAuth(envs[0], "", envs[1])
-	if err == nil || !strings.Contains(err.Error(), "missing required key environment variable: GOOGLE_CLIENT_ID") {
-		t.Fatalf("Expected error due to missing GOOGLE_CLIENT_ID, got: %v", err)
-	}
-}
+	assert.NotNil(t, cbMap, "our callback map should not be empty, or not created")
 
-func TestInitAuth_MissingGoogleClientSecret(t *testing.T) {
-	clearEnv()
-	os.Setenv("HASHING_KEY", "testhashingkey")
-	os.Setenv("GOOGLE_CLIENT_ID", "testclientid")
-
-	envs := getEnvs()
-	err := InitAuth(envs[0], envs[1], "")
-	if err == nil || !strings.Contains(err.Error(), "missing required key environment variable: GOOGLE_CLIENT_SECRET") {
-		t.Fatalf("Expected error due to missing GOOGLE_CLIENT_SECRET, got: %v", err)
-	}
+	assert.Equal(t, cbMap["google"], "http://127.0.0.1:8080/auth/google/callback", "our callback map should be configuring the callback host url correclty")
+	assert.Contains(t, cbMap["github"], "github", "http://127.0.0.1:8080/auth/github/callback")
 }
