@@ -1,0 +1,12 @@
+/* defined CSS variables to be used to toggle different colors */
+body[data-theme='light'] {
+  --colors-primary: deeppink;
+  --colors-background: white;
+  --text-color-primary: black;
+}
+
+body[data-theme='dark'] {
+  --colors-primary: white;
+  --colors-background: black;
+  --text-color-primary: white;
+}
