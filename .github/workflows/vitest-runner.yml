@@ -1,0 +1,26 @@
+name: vitest runner
+
+on: 
+  pull_request: 
+    types: [opened, synchronize] 
+
+jobs:
+  check-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - run: echo "Running vitest runner..."
+      - name: Setup Node.js
+        uses: actions/setup-node@v2 
+        with: 
+          node-version: '21.6.2' 
+
+      - name: Install dependencies, then run vitest
+        working-directory: ./frontend
+        run: |
+          npm ci - ignore-scripts
+          npx playwright install
+          npm run test
