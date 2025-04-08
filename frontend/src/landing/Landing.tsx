@@ -1,19 +1,24 @@
 import { Link } from "react-router";
+import { useTheme } from "../context/ThemeContext.ts";
 
 const Landing = () => {
+  const {cssThemes, toggleTheme} = useTheme();
+
   return (
-    <div className="w-screen h-screen flex flex-col justify-center items-center bg-gray-900 text-white">
-      <div className="max-w-lg w-full text-center p-8 bg-gray-800 rounded-2xl shadow-lg">
-        <h1 className="text-5xl font-extrabold text-blue-400 mb-4 drop-shadow-lg">RepetiCode</h1>
-        <p className="text-xl text-gray-300">Keep Hacking Away at Software Engineering</p>
-        <p className="text-lg text-gray-400 mt-1">Bit By Bit</p>
-        <div className="mt-6 flex justify-center space-x-4">
+    <div style={{background: cssThemes.colors.background, color: cssThemes.colors.primaryTextColor}} 
+      className="w-screen h-screen flex flex-col justify-center items-center">
+      <div className="text-inherit color max-w-lg w-full text-center bg-inherit rounded-2xl shadow-lg">
+        <h1 className="text-5xl font-extrabold mb-4 drop-shadow-lg">RepetiCode</h1>
+        <p className="text-xl">Keep Hacking Away at Software Engineering</p>
+        <p className="text-lg mt-1">Bit By Bit</p>
+        <div className="flex justify-center space-x-4">
           <Link
             to="/login"
-            className="px-6 py-3 bg-gray-700 rounded-full text-lg font-semibold text-white shadow-md hover:bg-gray-600 hover:shadow-lg transition duration-300 transform hover:scale-105"
+            className="px-6 py-3 rounded-full text-lg font-semibold shadow-md hover:shadow-lg transition duration-300 transform hover:scale-105"
           >
             Log In
           </Link>
+          <button onClick={() => toggleTheme()}>Click me</button>
         </div>
       </div>
     </div>
