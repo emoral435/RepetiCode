@@ -8,9 +8,9 @@ const Landing = () => {
     <div style={{background: cssThemes.colors.background, color: cssThemes.colors.primaryTextColor}} 
       className="w-screen h-screen flex flex-col justify-center items-center">
       <div className="text-inherit color max-w-lg w-full text-center bg-inherit rounded-2xl shadow-lg">
-        <h1 className="text-5xl font-extrabold mb-4 drop-shadow-lg">RepetiCode</h1>
-        <p className="text-xl">Keep Hacking Away at Software Engineering</p>
-        <p className="text-lg mt-1">Bit By Bit</p>
+        <h1 className="text-5xl font-extrabold mb-4 drop-shadow-lg">RepetiSwole</h1>
+        <p className="text-xl">Keep Hacking Away at Lifting</p>
+        <p className="text-lg mt-1">Rep by Rep</p>
         <div className="flex justify-center space-x-4">
           <Link
             to="/login"

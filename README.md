@@ -1,5 +1,5 @@
 [//]: # "header"
-<h1 align="center">RepitCode - Coding for Fun</h1>
+<h1 align="center">RepitSwole - Lifting for Fun</h1>
 
 [//]: # "le tech stack"
 <div align="center">
@@ -10,31 +10,26 @@
 
 [//]: # "catch"
 <p align="center">
-   A web app to get you into the groove and track what you'd want to learn within the field of software engineering.
+   A web app to get into the groove of tracking your lifts!
 </p>
 
 ## Why was this made? 🤔💭
-* I myself sometimes lose sight of what I would want to continue learning throughout my semesters at university, so having an application track the progress and information of the skills I want to uplevel would be handy!
-* Allowing others to get into the groove of learning software engineering via spaced repetition, consistent practice, and an application to keep them responsbile would be highly fulfilling NGL!
+* I would love to have a custom way to track the progression (or lack there of...) of my lifts, and have more control over the metrics surrounding my lifting
+* Allowing others to get into the groove of tracking their lifts is something that would be very fulfilling for me!
 
 ## Screenshots of the application! 😲🚀
 
 ## How do I run this locally? 💚🙂
 > [!NOTE]\
-> This program is fully hosted right now via localhost and packages by a Docker container! In the future, this likely will be moved to GCP because UIUC gave me free credits LOL
+> This program is hosted using Firebase, and Railway. I fully intend to pay and continue to host this service online, but if by any chance, the applicaiton is down, shoot me an email.
 >
 > Click -> [here](https://docs.docker.com/desktop/install/windows-install/) to go to the installation page.
 
 With Docker Desktop installed and opened, you can run these commands at the root directory of this GitHub repo...
+
+If you are running this for the first time, or have made changes and want to see it take affect on its deployment, use this
 ```shell
-# if you are running this for the first time, or have made changes and want to see it take affect on its deployment, use this
-docker compose up -d --build
-# starts the application in its detached state
-docker compose up -d
-# turns off the application
-docker compose down
-# wipes the container clean, effectively deleting the volumes for the database
-docker compose down -v
+make run
 ```
 
 ## Get in touch 💬

@@ -6,7 +6,7 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /repeticode
+RUN CGO_ENABLED=0 GOOS=linux go build -o /repetiswole
 
 # build using node and vite
 FROM node:21.6.2 AS frontend-builder
@@ -29,7 +29,7 @@ RUN mkdir -p frontend/dist
 
 COPY --from=go-builder \
       # copy our binary over
-      /repeticode \
+      /repetiswole \
       .
 
 COPY --from=frontend-builder \
@@ -71,4 +71,4 @@ ENV HASHING_KEY=$HASHING_KEY \
 
 EXPOSE 8080
 # run our binary
-CMD ["./repeticode"]
+CMD ["./repetiswole"]
