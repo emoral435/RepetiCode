@@ -6,11 +6,8 @@ The following routes are available within the service.
 
 [See here for auto-generation a markdown table](https://www.tablesgenerator.com/markdown_tables)
 
-| Endpoint (assuming base URL = localhost \| railway.app) | Description                                                                                                          |
-|---------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
-| /                                                       | Serves frontend                                                                                                      |
-| /auth/{provider}                                        | Redirects user to providers authentication page, leading to the /auth/{provider}/callback afterwards                 |
-| /auth/{provider}/callback                               | Deals with the logic after the provider redirects back to our application–either the user was authenticated, or not! |
-| /logout/{provider}                                      | Logs the user out                                                                                                    |
-
-## app
+| Endpoint (assuming base URL = localhost \| railway.app) | Description                                                                                                                                                                                                | Source    |
+|---------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| GET /                                                   | Serves frontend                                                                                                                                                                                            | server.go |
+| POST /api/v1/login/email                                | Checks against the Firebase database whether the email and password (given in the requests body) are correct, and logs in the user if it is, otherwise, sending back a bad request message on the frontend | server.go |
+| POST /api/v1/register/email                             | Registers a user within our Firebase database tied to their email, with a display name and password (passed within the request body)                                                                       | server.go |

@@ -1,7 +1,6 @@
 @import '@fontsource-variable/roboto-slab';
+@import "tailwindcss";
 
 * {
   font-family: 'Roboto Slab Variable', serif;
-  padding: 0;
-  margin: 0;
 }

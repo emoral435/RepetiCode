@@ -1,12 +1,14 @@
 /* defined CSS variables to be used to toggle different colors */
 body[data-theme='light'] {
-  --colors-primary: deeppink;
-  --colors-background: white;
+  --colors-primary: #a388ee;
+  --colors-secondary: #6d3df1;
+  --colors-background: #e3dff2;
   --text-color-primary: black;
 }
 
 body[data-theme='dark'] {
-  --colors-primary: white;
+  --colors-primary: #a388ee;
+  --colors-secondary: #6d3df1;
   --colors-background: black;
   --text-color-primary: white;
 }

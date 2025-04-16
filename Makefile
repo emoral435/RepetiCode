@@ -11,11 +11,11 @@ check-coverage: install-go-test-coverage
 
 .PHONY: builddocker
 builddocker:
-	docker build -t repeticode .
+	docker build -t repetiswole .
 
 .PHONY: rundocker
 rundocker:
-	docker run --env-file .env -p 8080:8080 repeticode
+	docker run --env-file .env -p 8080:8080 repetiswole
 
 .PHONY: buildfrontend
 buildfrontend:
