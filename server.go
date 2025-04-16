@@ -10,8 +10,9 @@ import (
 	"path"
 	"strings"
 
+	firebase "firebase.google.com/go/v4"
+	"firebase.google.com/go/v4/auth"
 	"github.com/joho/godotenv"
-	"github.com/markbates/goth/gothic"
 )
 
 func routes(cfg *config, logger *slog.Logger) *http.ServeMux {
@@ -23,9 +24,8 @@ func routes(cfg *config, logger *slog.Logger) *http.ServeMux {
 
 	m.HandleFunc("GET /status", r.Status)
 
-	m.HandleFunc("GET /auth/{provider}/callback", r.AuthCallback)
-	m.HandleFunc("GET /auth/{provider}", r.AuthProviderLogin)
-	m.HandleFunc("GET /logout/{provider}", r.AuthProviderLogout)
+	m.HandleFunc("POST /api/v1/login/email", r.EmailLogin)
+	m.HandleFunc("POST /api/v1/register/email", r.EmailRegister)
 
 	// catch-all routing solution for serving static React frontend with Go, handling React Router routing cases
 	// see: https://stackoverflow.com/a/64687181
@@ -39,9 +39,8 @@ func routes(cfg *config, logger *slog.Logger) *http.ServeMux {
 // The reasoning behind using an interface for this is to allow us to mock our API tests!
 type Routes interface {
 	Status(w http.ResponseWriter, r *http.Request)
-	AuthCallback(w http.ResponseWriter, r *http.Request)
-	AuthProviderLogin(w http.ResponseWriter, r *http.Request)
-	AuthProviderLogout(w http.ResponseWriter, r *http.Request)
+	EmailLogin(w http.ResponseWriter, r *http.Request)
+	EmailRegister(w http.ResponseWriter, r *http.Request)
 }
 
 // implements the Routes interface
@@ -73,6 +72,13 @@ type config struct {
 	port              int
 	ctx               context.Context
 	env               map[string]string
+	firebaseApp       *firebase.App
+}
+
+type UserEmailAuthRequest struct {
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	DisplayName string `json:"displayname"`
 }
 
 func (rtr *router) serveFrontend(w http.ResponseWriter, r *http.Request) {
@@ -93,50 +99,55 @@ func (rtr *router) serveFrontend(w http.ResponseWriter, r *http.Request) {
 	fs.ServeHTTP(w, r)
 }
 
-func (rtr *router) AuthCallback(w http.ResponseWriter, r *http.Request) {
-	provider := r.PathValue("provider")
-	//nolint:staticcheck
-	r = r.WithContext(context.WithValue(rtr.config.ctx, "provider", provider))
-	_, err := gothic.CompleteUserAuth(w, r)
+func (rtr *router) EmailLogin(w http.ResponseWriter, r *http.Request) {
+	user := &UserEmailAuthRequest{}
+	json.NewDecoder(r.Body).Decode(user)
+
+	_, err := rtr.config.firebaseApp.Auth(rtr.config.ctx)
 	if err != nil {
-		rtr.logger.Error(fmt.Sprintf("error trying to authorize user from the %s provider", provider))
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "error getting auth client when trying to make new use from email",
+		})
+		return
+	}
+}
+
+func (rtr *router) EmailRegister(w http.ResponseWriter, r *http.Request) {
+	user := &UserEmailAuthRequest{}
+	json.NewDecoder(r.Body).Decode(user)
+
+	client, err := rtr.config.firebaseApp.Auth(rtr.config.ctx)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "error getting auth client when trying to make new use from email",
+		})
 		return
 	}
 
-	http.Redirect(w, r, "/home", http.StatusTemporaryRedirect)
-}
-func (rtr *router) AuthProviderLogout(w http.ResponseWriter, r *http.Request) {
-	provider := r.PathValue("provider")
-	//nolint:staticcheck
-	r = r.WithContext(context.WithValue(rtr.config.ctx, "provider", provider))
-	if err := gothic.Logout(w, r); err != nil {
-		rtr.logger.Error(fmt.Sprintf("error trying to authorize user from the %s provider", provider))
+	newUser := (&auth.UserToCreate{}).Email(user.Email).Password(user.Password).DisplayName(user.DisplayName)
+
+	res, err := client.CreateUser(rtr.config.ctx, newUser)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": fmt.Sprintf("error trying to make user: %s", err.Error()),
+		})
 		return
 	}
 
-	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-}
-
-func (rtr *router) AuthProviderLogin(w http.ResponseWriter, r *http.Request) {
-	provider := r.PathValue("provider")
-	//nolint:staticcheck
-	r = r.WithContext(context.WithValue(rtr.config.ctx, "provider", provider))
-	// try to get the user without re-authenticating
-	if _, err := gothic.CompleteUserAuth(w, r); err == nil {
-		http.Redirect(w, r, "/home", http.StatusTemporaryRedirect)
-	} else {
-		gothic.BeginAuthHandler(w, r)
-	}
+	w.WriteHeader(200)
+	fmt.Fprintf(w, res.DisplayName)
 }
 
 func initEnvironmentVariables() (map[string]string, error) {
 	// if we are in local development mode, then use a package to load the environment variables
 	mode := os.Getenv("MODE")
-	if mode == "" {
-		return nil, fmt.Errorf("error when checking environment variable to indicate which environment mode we are running in: mode=%v", mode)
-	}
-
-	if mode == "development" {
+	if mode == "development" || mode == "" {
 		err := godotenv.Load()
 		if err != nil {
 			return nil, fmt.Errorf("error loading .env file with godotenv: %w", err)
