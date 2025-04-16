@@ -7,7 +7,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/emoral435/repeticode/auth"
+	firebase "firebase.google.com/go/v4"
+	"google.golang.org/api/option"
 )
 
 func main() {
@@ -21,16 +22,22 @@ func main() {
 		os.Exit(1)
 	}
 
+	// initialize firebase app
+	opt := option.WithCredentialsFile(env["GOOGLE_APPLICATION_CREDENTIALS"])
+	firebaseApp, err := firebase.NewApp(context.Background(), nil, opt)
+	if err != nil {
+		logger.Error(fmt.Errorf("error initializing firebase app: %w", err).Error())
+		os.Exit(1)
+	}
+
 	// Set port environment variable, given by Railway, to 8080
 	cfg := &config{
 		frontendBuildPath: "./frontend/dist/",
 		port:              8080,
 		ctx:               context.Background(),
 		env:               env,
+		firebaseApp:       firebaseApp,
 	}
-
-	// load gothic package with our application-specific configuration
-	auth.InitAuth(cfg.env)
 
 	// create the server
 	srv := &http.Server{

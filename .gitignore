@@ -1,5 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# !IMPORTANT! This will ignore our firebase config file
+repeticode-firebase-adminsdk-fbsvc-329abade0d.json
+
 # dependencies
 /node_modules
 /.pnp
