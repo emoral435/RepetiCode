@@ -1,120 +1,110 @@
 package main
 
 import (
+	"bytes"
 	"context"
-	"fmt"
+	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 
-	"github.com/markbates/goth"
-	"github.com/markbates/goth/gothic"
-	"github.com/stretchr/testify/assert"
+	"log/slog"
 )
 
-var fakeEnvironmentVariables = map[string]string{
-	"MODE":                  "production",
-	"HASHING_KEY":           "test_hashing_key",
-	"GOOGLE_CLIENT_ID":      "test_google_client_id",
-	"GOOGLE_CLIENT_SECRET":  "test_google_client_id",
-	"GITHUB_CLIENT_ID":      "test_github_client_id",
-	"GITHUB_SESSION_SECRET": "test_github_session_secret",
-	"RAILWAY_PUBLIC_DOMAIN": "",
-}
-
-func TestInitEnvironmentVariables_Success(t *testing.T) {
-	// Set mock environment variables
-	for key, val := range fakeEnvironmentVariables {
-		err := os.Setenv(key, val)
-		assert.NoError(t, err, fmt.Errorf("error should not be present setting environment variable %s: %w", key, err))
-	}
-
-	// Ensure cleanup after test
-	defer os.Clearenv()
-
-	env, err := initEnvironmentVariables()
-
-	// Ensure no error occurred
-	assert.NoError(t, err, "initEnvironmentVariables should not return an error")
-
-	for key := range fakeEnvironmentVariables {
-		assert.Contains(t, env, key, fmt.Sprintf("env map should contain key: %s", key))
-		if !strings.HasPrefix(key, "RAILWAY") {
-			assert.NotEmpty(t, env[key], fmt.Sprintf("env[%s] should not be empty", key))
-		}
+// mock config with minimal usable values
+func getTestRouter() *router {
+	return &router{
+		config: &config{
+			frontendBuildPath: "./testdata/build",
+			port:              8080,
+			ctx:               context.Background(),
+			env: map[string]string{
+				"GOOGLE_FIREBASE_API_KEY": "fake_api_key",
+			},
+			firebaseApp: nil, // Will be nil for now unless mocking FirebaseApp
+		},
+		logger: slog.Default(),
 	}
 }
 
-func TestInitEnvironmentVariables_MissingNonRailwayVariable(t *testing.T) {
-	// Set environment variables but leave out a required one
-	fakeEnvironmentVariables["RAILWAY_PUBLIC_DOMAIN"] = "railway.example.com"
-	fakeEnvironmentVariables["GITHUB_CLIENT_ID"] = ""
-	for key, val := range fakeEnvironmentVariables {
-		err := os.Setenv(key, val)
-		assert.NoError(t, err, fmt.Errorf("error should not be present setting environment variable %s: %w", key, err))
-	}
+func TestStatusEndpoint(t *testing.T) {
+	r := getTestRouter()
+	req := httptest.NewRequest("GET", "/status", nil)
+	w := httptest.NewRecorder()
+
+	r.Status(w, req)
+
+	resp := w.Result()
 	defer func() {
-		os.Clearenv()
-		fakeEnvironmentVariables["GITHUB_CLIENT_ID"] = "test_github_client_id"
+		err := resp.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}()
 
-	env, err := initEnvironmentVariables()
-
-	// Should return an error because a required variable is missing
-	assert.Error(t, err, "initEnvironmentVariables should return an error when a required variable is missing")
-	assert.Nil(t, env, "env should be nil when a required variable is missing")
-}
-
-func TestInitEnvironmentVariables_IgnoreMissingRailwayVariable(t *testing.T) {
-	// Set environment variables without RAILWAY_PUBLIC_DOMAIN
-	delete(fakeEnvironmentVariables, "RAILWAY_PUBLIC_DOMAIN")
-	for key, val := range fakeEnvironmentVariables {
-		err := os.Setenv(key, val)
-		assert.NoError(t, err, fmt.Errorf("error should not be present setting environment variable %s: %w", key, err))
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status 200 but got %d", resp.StatusCode)
 	}
 
-	defer os.Clearenv()
-
-	env, err := initEnvironmentVariables()
-
-	// Should still succeed, since RAILWAY_PUBLIC_DOMAIN is optional
-	assert.NoError(t, err, "initEnvironmentVariables should not return an error when RAILWAY_PUBLIC_DOMAIN is missing")
-	assert.Contains(t, env, "RAILWAY_PUBLIC_DOMAIN", "env should contain RAILWAY_PUBLIC_DOMAIN even if empty")
-	assert.Empty(t, env["RAILWAY_PUBLIC_DOMAIN"], "RAILWAY_PUBLIC_DOMAIN should be empty but present in env map")
-}
-
-func TestAuthCallback_Success(t *testing.T) {
-	// Mock gothic to return a successful auth
-	gothic.CompleteUserAuth = func(w http.ResponseWriter, r *http.Request) (goth.User, error) {
-		return goth.User{}, nil
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("Error decoding response: %v", err)
 	}
 
-	r := &router{config: &config{ctx: context.Background()}}
+	if result["message"] != "status ok" {
+		t.Errorf("Unexpected message: %v", result["message"])
+	}
+}
 
-	req := httptest.NewRequest(http.MethodGet, "/auth/callback/provider", nil)
+func TestEmailLogin_MalformedRequest(t *testing.T) {
+	r := getTestRouter()
+
+	body := strings.NewReader(`{malformed-json}`)
+	req := httptest.NewRequest("POST", "/api/v1/login/email", body)
 	w := httptest.NewRecorder()
 
-	r.AuthCallback(w, req)
+	r.EmailLogin(w, req)
 
-	assert.Equal(t, http.StatusTemporaryRedirect, w.Code, "Expected 307 Temporary Redirect")
-	assert.Equal(t, "/home", w.Header().Get("Location"), "Should redirect to /home")
+	resp := w.Result()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("Expected 500 for bad input, got %d", resp.StatusCode)
+	}
 }
 
-func TestAuthProviderLogin_Success(t *testing.T) {
-	// Mock gothic to return a successful auth
-	gothic.CompleteUserAuth = func(w http.ResponseWriter, r *http.Request) (goth.User, error) {
-		return goth.User{}, nil
+func TestEmailRegister_BadFirebaseClient(t *testing.T) {
+	r := getTestRouter()
+	// no firebaseApp = simulated failure when calling Auth
+
+	jsonBody := map[string]string{
+		"email":       "test@example.com",
+		"password":    "password123",
+		"displayname": "Tester",
 	}
+	bodyBytes, _ := json.Marshal(jsonBody)
 
-	r := &router{config: &config{ctx: context.Background()}}
-
-	req := httptest.NewRequest(http.MethodGet, "/auth/login/provider", nil)
+	req := httptest.NewRequest("POST", "/api/v1/register/email", bytes.NewReader(bodyBytes))
 	w := httptest.NewRecorder()
 
-	r.AuthProviderLogin(w, req)
+	r.EmailRegister(w, req)
 
-	assert.Equal(t, http.StatusTemporaryRedirect, w.Code, "Expected 307 Temporary Redirect")
-	assert.Equal(t, "/home", w.Header().Get("Location"), "Should redirect to /home")
+	resp := w.Result()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("Expected 500 for no Firebase client, got %d", resp.StatusCode)
+	}
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,8 +11,9 @@ import (
 	"path"
 	"strings"
 
+	firebase "firebase.google.com/go/v4"
+	"firebase.google.com/go/v4/auth"
 	"github.com/joho/godotenv"
-	"github.com/markbates/goth/gothic"
 )
 
 func routes(cfg *config, logger *slog.Logger) *http.ServeMux {
@@ -23,9 +25,8 @@ func routes(cfg *config, logger *slog.Logger) *http.ServeMux {
 
 	m.HandleFunc("GET /status", r.Status)
 
-	m.HandleFunc("GET /auth/{provider}/callback", r.AuthCallback)
-	m.HandleFunc("GET /auth/{provider}", r.AuthProviderLogin)
-	m.HandleFunc("GET /logout/{provider}", r.AuthProviderLogout)
+	m.HandleFunc("POST /api/v1/login/email", r.EmailLogin)
+	m.HandleFunc("POST /api/v1/register/email", r.EmailRegister)
 
 	// catch-all routing solution for serving static React frontend with Go, handling React Router routing cases
 	// see: https://stackoverflow.com/a/64687181
@@ -39,9 +40,8 @@ func routes(cfg *config, logger *slog.Logger) *http.ServeMux {
 // The reasoning behind using an interface for this is to allow us to mock our API tests!
 type Routes interface {
 	Status(w http.ResponseWriter, r *http.Request)
-	AuthCallback(w http.ResponseWriter, r *http.Request)
-	AuthProviderLogin(w http.ResponseWriter, r *http.Request)
-	AuthProviderLogout(w http.ResponseWriter, r *http.Request)
+	EmailLogin(w http.ResponseWriter, r *http.Request)
+	EmailRegister(w http.ResponseWriter, r *http.Request)
 }
 
 // implements the Routes interface
@@ -73,6 +73,27 @@ type config struct {
 	port              int
 	ctx               context.Context
 	env               map[string]string
+	firebaseApp       *firebase.App
+}
+
+type NewUserEmailAuthRequest struct {
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	DisplayName string `json:"displayname"`
+}
+
+type CheckUserEmailAuthRequest struct {
+	Email             string `json:"email"`
+	Password          string `json:"password"`
+	ReturnSecureToken bool   `json:"returnSecureToken"`
+}
+
+type FirebaseAuthResponseOk struct {
+	Email        string `json:"email"`
+	DisplayName  string `json:"displayName"`
+	Registered   bool   `json:"registered"`
+	RefreshToken string `json:"refreshToken"`
+	IdToken      string `json:"idToken"`
 }
 
 func (rtr *router) serveFrontend(w http.ResponseWriter, r *http.Request) {
@@ -93,50 +114,163 @@ func (rtr *router) serveFrontend(w http.ResponseWriter, r *http.Request) {
 	fs.ServeHTTP(w, r)
 }
 
-func (rtr *router) AuthCallback(w http.ResponseWriter, r *http.Request) {
-	provider := r.PathValue("provider")
-	//nolint:staticcheck
-	r = r.WithContext(context.WithValue(rtr.config.ctx, "provider", provider))
-	_, err := gothic.CompleteUserAuth(w, r)
+func (rtr *router) EmailLogin(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	userRequest := &CheckUserEmailAuthRequest{}
+
+	if err := json.NewDecoder(r.Body).Decode(userRequest); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		err = json.NewEncoder(w).Encode(map[string]string{
+			"error": "error unmarshalling clients request to authenticate using email login credentials",
+		})
+
+		if err != nil {
+			rtr.logger.Error("error while json encoding an error during unmarshalling clients request to authenticate using email login credentials")
+		}
+
+		return
+	}
+
+	req, err := json.Marshal(userRequest)
 	if err != nil {
-		rtr.logger.Error(fmt.Sprintf("error trying to authorize user from the %s provider", provider))
+		w.WriteHeader(http.StatusInternalServerError)
+		err = json.NewEncoder(w).Encode(map[string]string{
+			"error": "error marshalling clients request to authenticate using email login credentials",
+		})
+
+		if err != nil {
+			rtr.logger.Error("error while json encoding an error during unmarshalling clients request to login using email login credentials")
+		}
+
 		return
 	}
 
-	http.Redirect(w, r, "/home", http.StatusTemporaryRedirect)
-}
-func (rtr *router) AuthProviderLogout(w http.ResponseWriter, r *http.Request) {
-	provider := r.PathValue("provider")
-	//nolint:staticcheck
-	r = r.WithContext(context.WithValue(rtr.config.ctx, "provider", provider))
-	if err := gothic.Logout(w, r); err != nil {
-		rtr.logger.Error(fmt.Sprintf("error trying to authorize user from the %s provider", provider))
+	googleOAuthEndpoint := fmt.Sprintf("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=%s", rtr.config.env["GOOGLE_FIREBASE_API_KEY"])
+	gAuthResponse, err := http.Post(googleOAuthEndpoint, "application/json", bytes.NewBuffer(req))
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		err = json.NewEncoder(w).Encode(map[string]string{
+			"error": fmt.Sprintf("error calling google oauth endpoint to check users sign in credentials: %v", err.Error()),
+		})
+
+		if err != nil {
+			rtr.logger.Error("error while json encoding an error during google oauth endpoint checking for user sign in credentials")
+		}
+
 		return
 	}
 
-	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+	if gAuthResponse.StatusCode != 200 {
+		w.WriteHeader(http.StatusBadRequest)
+		err = json.NewEncoder(w).Encode(map[string]string{
+			"error": "error returned while cross referencing user input credentials with what is stored on firebase",
+		})
+
+		if err != nil {
+			rtr.logger.Error("error while json encoding an error during cross referencing user input credentials with what is stored on firebase")
+		}
+
+		return
+	}
+
+	fbAuthRes := &FirebaseAuthResponseOk{}
+	if err := json.NewDecoder(gAuthResponse.Body).Decode(fbAuthRes); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		err = json.NewEncoder(w).Encode(map[string]string{
+			"error": fmt.Sprintf("error unmarshalling gAuth's response: %v", err.Error()),
+		})
+
+		if err != nil {
+			rtr.logger.Error("error while json encoding an error during unmarshalling gAuth's response")
+		}
+
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(map[string]string{
+		"message":     "successfully logged in user",
+		"idToken":     fbAuthRes.IdToken,
+		"email":       fbAuthRes.Email,
+		"displayname": fbAuthRes.DisplayName,
+	})
+
+	if err != nil {
+		rtr.logger.Error("error while json encoding success message while going through email login route")
+	}
 }
 
-func (rtr *router) AuthProviderLogin(w http.ResponseWriter, r *http.Request) {
-	provider := r.PathValue("provider")
-	//nolint:staticcheck
-	r = r.WithContext(context.WithValue(rtr.config.ctx, "provider", provider))
-	// try to get the user without re-authenticating
-	if _, err := gothic.CompleteUserAuth(w, r); err == nil {
-		http.Redirect(w, r, "/home", http.StatusTemporaryRedirect)
-	} else {
-		gothic.BeginAuthHandler(w, r)
+func (rtr *router) EmailRegister(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	user := &NewUserEmailAuthRequest{}
+	if err := json.NewDecoder(r.Body).Decode(user); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		err = json.NewEncoder(w).Encode(map[string]string{
+			"error": fmt.Sprintf("error marshalling clients request while registering email: %v", err.Error()),
+		})
+
+		if err != nil {
+			rtr.logger.Error("error while json encoding an error during marshalling clients request while registering email")
+		}
+
+		return
+	}
+
+	if rtr.config.firebaseApp == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		err := json.NewEncoder(w).Encode(map[string]string{
+			"error": "error while trying to register new user, firebaseApp is not initialized",
+		})
+
+		if err != nil {
+			rtr.logger.Error("error while json encoding an error while trying to register new user, firebaseApp is not initialized")
+		}
+
+		return
+	}
+
+	client, err := rtr.config.firebaseApp.Auth(rtr.config.ctx)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		err1 := json.NewEncoder(w).Encode(map[string]string{
+			"error": fmt.Sprintf("error getting auth client when trying to make new user from email, error: %v", err.Error()),
+		})
+
+		if err1 != nil {
+			rtr.logger.Error("error while json encoding an error auth client when trying to make new user from email")
+		}
+
+		return
+	}
+
+	newUser := (&auth.UserToCreate{}).Email(user.Email).Password(user.Password).DisplayName(user.DisplayName)
+	if _, err = client.CreateUser(rtr.config.ctx, newUser); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		err = json.NewEncoder(w).Encode(map[string]string{
+			"error": fmt.Sprintf("error trying to make user: %s", err.Error()),
+		})
+
+		if err != nil {
+			rtr.logger.Error("error while json encoding an error trying to make user")
+		}
+
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(map[string]string{
+		"message": "successfully created new user",
+	})
+
+	if err != nil {
+		rtr.logger.Error("error while json encoding success message while going through email register route")
 	}
 }
 
 func initEnvironmentVariables() (map[string]string, error) {
 	// if we are in local development mode, then use a package to load the environment variables
 	mode := os.Getenv("MODE")
-	if mode == "" {
-		return nil, fmt.Errorf("error when checking environment variable to indicate which environment mode we are running in: mode=%v", mode)
-	}
-
-	if mode == "development" {
+	if mode == "development" || mode == "" {
 		err := godotenv.Load()
 		if err != nil {
 			return nil, fmt.Errorf("error loading .env file with godotenv: %w", err)
@@ -144,9 +278,7 @@ func initEnvironmentVariables() (map[string]string, error) {
 	}
 
 	env := make(map[string]string)
-	keys := []string{"MODE", "HASHING_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
-		"GITHUB_CLIENT_ID", "GITHUB_SESSION_SECRET", "RAILWAY_PUBLIC_DOMAIN",
-	}
+	keys := []string{"MODE", "GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_FIREBASE_API_KEY", "RAILWAY_PUBLIC_DOMAIN"}
 
 	for _, key := range keys {
 		env[key] = os.Getenv(key)

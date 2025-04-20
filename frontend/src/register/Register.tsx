@@ -1,30 +1,33 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTheme } from "../context/ThemeContext";
-import { StarIcon } from "@heroicons/react/24/outline";
+import { ViewfinderCircleIcon } from "@heroicons/react/24/outline";
 import { Link, useNavigate } from "react-router";
 
-const Login = () => {
+const Register = () => {
   const { cssThemes } = useTheme();
 
   const [email, setEmail] = useState<string>("");
+  const [displayname, setDisplayname] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const [confirm, setConfirm] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string>("");
-  const [registeredMsg, setRegisteredMsg] = useState<string>("");
+
   const navigate = useNavigate();
 
-  useEffect(() => {
-    setRegisteredMsg(sessionStorage.getItem("registered") ?? '');
-  }, [])
-
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
 
+    if (password !== confirm) {
+      setErrorMsg("Passwords do not match.");
+      return;
+    }
+
     try {
       const origin = window.location.origin;
-      const res = await fetch(origin + "/api/v1/login/email", {
+      const res = await fetch(origin + "/api/v1/register/email", {
         method: "POST",
-        body: JSON.stringify({ email: email, password: password, returnSecureToken: true }),
+        body: JSON.stringify({ email: email, password: password, displayname: displayname }),
         headers: {
           "Content-Type": "application/json",
         },
@@ -36,10 +39,12 @@ const Login = () => {
         throw Error(`response returned error: ${data.error}`);
       }
 
-      // if we get here, we can navigate the user to navigate home
-      navigate("/home");
+      // load within the session that the user just registered
+      sessionStorage.setItem("registered", "Successfully registered account! Welcome.");
+      // if we get here, we can navigate the user to navigate to Log In
+      navigate("/login");
     } catch (err) {
-      console.error("Login error:", err);
+      console.error("Registration error:", err);
       if (err instanceof Error) {
         setErrorMsg(err.message || "Failed to log in.");
       }
@@ -59,56 +64,71 @@ const Login = () => {
           style={{ background: cssThemes.colors.background }}
           className="border-4 flex justify-center items-center gap-4 p-4 rounded-2xl shadow-2xl"
         >
-          <div className="inline-block transition-transform duration-700 hover:rotate-[360deg]">
-            <StarIcon width={60} />
+          <div className="transition-transform duration-700 hover:rotate-[360deg]">
+            <ViewfinderCircleIcon width={60} />
           </div>
-          <h1 className="text-4xl font-extrabold drop-shadow-lg">Log In</h1>
-          <div className="inline-block transition-transform duration-700 hover:rotate-[360deg]">
-            <StarIcon width={60} />
+          <h1 className="text-4xl font-extrabold drop-shadow-lg">Register Account</h1>
+          <div className="transition-transform duration-700 hover:rotate-[360deg]">
+            <ViewfinderCircleIcon width={60} />
           </div>
         </section>
 
         <form
-          onSubmit={handleEmailLogin}
+          onSubmit={handleRegister}
           style={{ background: cssThemes.colors.background }}
           className="border-4 w-full flex flex-col items-center p-6 gap-4 rounded-2xl shadow-2xl"
         >
           <input
             type="email"
             placeholder="Email"
-            className="w-full px-3 py-2 rounded-2xl border border-black-300"
+            className="w-full px-3 py-2 rounded border border-black-300"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
           <input
+            type="text"
+            placeholder="Displayname"
+            className="w-full px-3 py-2 rounded border border-black-300"
+            value={displayname}
+            onChange={(e) => setDisplayname(e.target.value)}
+            required
+          />
+          <input
             type="password"
             placeholder="Password"
-            className="w-full px-3 py-2 rounded-2xl border border-black-300"
+            className="w-full px-3 py-2 rounded border border-black-300"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-          {registeredMsg && <p className="text-green-400 text-sm">{registeredMsg}</p>}
+          <input
+            type="password"
+            placeholder="Confirm Password"
+            className="w-full px-3 py-2 rounded border border-black-300"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            required
+          />
           {errorMsg && <p className="text-red-400 text-sm">{errorMsg}</p>}
           <button
             type="submit"
             style={{ background: cssThemes.colors.secondary }}
             className="text-2xl w-full border-4 px-4 py-2 rounded-2xl font-semibold shadow-md hover:shadow-lg transition duration-300 transform hover:scale-105"
           >
-            Log In with Email
+            Register
           </button>
         </form>
         <section 
           style={{ background: cssThemes.colors.background }}
           className="border-4 w-full flex flex-col items-center p-6 gap-4 rounded-2xl shadow-2xl"
         >
-          <h2>Not Registered Yet?</h2>
-          <Link to={"/register"} 
+          <h2>Already Registered?</h2>
+          <Link to={"/login"} 
             style={{ background: cssThemes.colors.secondary }}
             className="text-2xl w-full border-4 px-4 py-2 rounded-2xl font-semibold shadow-md hover:shadow-lg transition duration-300 transform hover:scale-105"
           >
-            Register Now. It's free!
+            Log In!
           </Link>
         </section>
       </section>
@@ -116,4 +136,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Register;

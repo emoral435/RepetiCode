@@ -1,5 +1,5 @@
 # go build
-FROM golang:1.23-bookworm AS go-builder
+FROM golang:1.24-bookworm AS go-builder
 
 # we get our main module as a binary from the source
 WORKDIR /app
@@ -9,7 +9,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o /repetiswole
 
 # build using node and vite
-FROM node:21.6.2 AS frontend-builder
+FROM node:23.11.0-slim AS frontend-builder
 
 # change to our main working directory
 WORKDIR /app/frontend
@@ -21,7 +21,7 @@ COPY ./frontend/ .
 RUN npm i && npm run build
 
 # combine both go-builder and frontend
-FROM debian:bookworm-slim as package-builder
+FROM debian:stable-slim as package-builder
 
 # switch into our applications folder
 WORKDIR /app
@@ -51,14 +51,12 @@ ARG RAILWAY_ENVIRONMENT_ID
 ARG RAILWAY_SERVICE_ID
 
 # app env variables
-ARG HASHING_KEY
-ARG GOOGLE_CLIENT_ID
-ARG GOOGLE_CLIENT_SECRET
+ARG GOOGLE_APPLICATION_CREDENTIALS_JSON_B64
+ARG GOOGLE_FIREBASE_API_KEY
 ARG MODE
 
-ENV HASHING_KEY=$HASHING_KEY \
-      GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID \
-      GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET \
+ENV   GOOGLE_FIREBASE_API_KEY=$GOOGLE_FIREBASE_API_KEY \
+      GOOGLE_APPLICATION_CREDENTIALS_JSON_B64=$GOOGLE_APPLICATION_CREDENTIALS_JSON_B64 \
       MODE=$MODE \
       RAILWAY_PUBLIC_DOMAIN=$RAILWAY_PUBLIC_DOMAIN \
       RAILWAY_PRIVATE_DOMAIN=$RAILWAY_PRIVATE_DOMAIN \
@@ -68,6 +66,9 @@ ENV HASHING_KEY=$HASHING_KEY \
       RAILWAY_PROJECT_ID=$RAILWAY_PROJECT_ID \
       RAILWAY_ENVIRONMENT_ID=$RAILWAY_ENVIRONMENT_ID \
       RAILWAY_SERVICE_ID=$RAILWAY_SERVICE_ID
+
+RUN echo $GOOGLE_APPLICATION_CREDENTIALS_JSON_B64 | base64 -d > ./firebase-config.json
+ENV GOOGLE_APPLICATION_CREDENTIALS=./firebase-config.json
 
 EXPOSE 8080
 # run our binary
