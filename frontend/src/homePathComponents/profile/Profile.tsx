@@ -1,7 +1,6 @@
-// import { useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext"
 
-const Home = () => {
+const Profile = () => {
   const { cssThemes } = useTheme();
 
   return (
@@ -14,11 +13,11 @@ const Home = () => {
         className="border-4 w-[90%] max-w-lg flex flex-col items-center rounded-2xl shadow-xl p-8 gap-8 text-center"
       >
         <div>
-          Home
+          Profile
         </div>
       </section>
     </div>
   )
 }
 
-export default Home
+export default Profile
