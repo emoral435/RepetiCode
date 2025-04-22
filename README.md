@@ -20,7 +20,13 @@
 * I would love to have a custom way to track the progression (or lack there of...) of my lifts, and have more control over the metrics surrounding my lifting
 * Allowing others to get into the groove of tracking their lifts is something that would be very fulfilling for me!
 
-## Screenshots of the application! 😲🚀
+## Try it out yourself!
+Hosted on Railway, you can try out the application and register / log in to start or continue your lifting journey!
+
+[Try it out for free](https://repetiswole-production.up.railway.app/)
+
+## Documentation
+To see more about the API's that are provided, please check out the `doc` folder within this repository! I try to keep it as updated as possible.
 
 ## How do I run this locally? 💚🙂
 > [!NOTE]\

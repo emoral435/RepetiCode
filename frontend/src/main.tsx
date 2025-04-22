@@ -15,6 +15,9 @@ import Layout from './rootPathComponents/layout/Layout';
 import NotFound404 from './rootPathComponents/not-found-404/NotFound404';
 import AuthContextProvider from './context/AuthContextProvider';
 import HomeLayout from './homePathComponents/homeLayout/HomeLayout';
+import Profile from './homePathComponents/profile/Profile';
+import Metrics from './homePathComponents/metrics/Metrics';
+import Workouts from './homePathComponents/workouts/Workouts';
 
 initializeApp(config);
 
@@ -31,6 +34,9 @@ createRoot(document.getElementById('root')!).render(
               <Route path="*" element={<NotFound404 />} />
               <Route path="home" element={<HomeLayout />} >
                 <Route index element={<Home />} />
+                <Route path="profile" element={<Profile />} />
+                <Route path="metrics" element={<Metrics />} />
+                <Route path="workouts" element={<Workouts />} />
               </Route>
             </Route>
           </Routes>
