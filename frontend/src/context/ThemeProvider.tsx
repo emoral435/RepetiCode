@@ -3,11 +3,11 @@ import { ThemeContext, cssThemes } from "./ThemeContext";
 import "./css-vars.css";
 
 
-interface MyComponentProps {
+interface ThemeProviderProps {
   children: React.ReactNode;
 }
 
-const ThemeProvider = ({ children }: MyComponentProps) => {
+const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
   });

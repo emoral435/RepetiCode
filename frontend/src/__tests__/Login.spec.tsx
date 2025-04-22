@@ -1,9 +1,12 @@
 import { expect, test } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { MemoryRouter } from "react-router-dom";
-import Login from '../login/Login';
+import Login from '../rootPathComponents/login/Login';
+import { initializeApp } from 'firebase/app';
+import config from '../lib/firebaseconfig';
 
 test('renders text correctly', async () => {
+  initializeApp(config);
   const { getByText } = render(
     <MemoryRouter>
       <Login />

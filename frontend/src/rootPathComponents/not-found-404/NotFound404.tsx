@@ -1,6 +1,6 @@
 import { StarIcon } from "@heroicons/react/24/outline";
 import { Link } from "react-router";
-import { useTheme } from "../context/ThemeContext";
+import { useTheme } from "../../context/ThemeContext";
 
 const NotFound404 = () => {
   const { cssThemes } = useTheme();

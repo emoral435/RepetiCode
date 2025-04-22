@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { useTheme } from "../context/ThemeContext";
+import { useTheme } from "../../context/ThemeContext";
 import { StarIcon } from "@heroicons/react/24/outline";
+import { signInWithEmailAndPassword, getAuth } from "firebase/auth/web-extension";
 import { Link, useNavigate } from "react-router";
 
 const Login = () => {
@@ -10,6 +11,7 @@ const Login = () => {
   const [password, setPassword] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [registeredMsg, setRegisteredMsg] = useState<string>("");
+  const auth = getAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -21,22 +23,7 @@ const Login = () => {
     setErrorMsg("");
 
     try {
-      const origin = window.location.origin;
-      const res = await fetch(origin + "/api/v1/login/email", {
-        method: "POST",
-        body: JSON.stringify({ email: email, password: password, returnSecureToken: true }),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      })
-
-      const data = await res.json();
-      // if there was an error message within the JSON response
-      if (Object.prototype.hasOwnProperty.call(data, "error")) {
-        throw Error(`response returned error: ${data.error}`);
-      }
-
-      // if we get here, we can navigate the user to navigate home
+      await signInWithEmailAndPassword(auth, email, password);
       navigate("/home");
     } catch (err) {
       console.error("Login error:", err);
