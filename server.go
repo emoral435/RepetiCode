@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -25,7 +24,6 @@ func routes(cfg *config, logger *slog.Logger) *http.ServeMux {
 
 	m.HandleFunc("GET /status", r.Status)
 
-	m.HandleFunc("POST /api/v1/login/email", r.EmailLogin)
 	m.HandleFunc("POST /api/v1/register/email", r.EmailRegister)
 
 	// catch-all routing solution for serving static React frontend with Go, handling React Router routing cases
@@ -82,12 +80,6 @@ type NewUserEmailAuthRequest struct {
 	DisplayName string `json:"displayname"`
 }
 
-type CheckUserEmailAuthRequest struct {
-	Email             string `json:"email"`
-	Password          string `json:"password"`
-	ReturnSecureToken bool   `json:"returnSecureToken"`
-}
-
 type FirebaseAuthResponseOk struct {
 	Email        string `json:"email"`
 	DisplayName  string `json:"displayName"`
@@ -112,92 +104,6 @@ func (rtr *router) serveFrontend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fs.ServeHTTP(w, r)
-}
-
-func (rtr *router) EmailLogin(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	userRequest := &CheckUserEmailAuthRequest{}
-
-	if err := json.NewDecoder(r.Body).Decode(userRequest); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		err = json.NewEncoder(w).Encode(map[string]string{
-			"error": "error unmarshalling clients request to authenticate using email login credentials",
-		})
-
-		if err != nil {
-			rtr.logger.Error("error while json encoding an error during unmarshalling clients request to authenticate using email login credentials")
-		}
-
-		return
-	}
-
-	req, err := json.Marshal(userRequest)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		err = json.NewEncoder(w).Encode(map[string]string{
-			"error": "error marshalling clients request to authenticate using email login credentials",
-		})
-
-		if err != nil {
-			rtr.logger.Error("error while json encoding an error during unmarshalling clients request to login using email login credentials")
-		}
-
-		return
-	}
-
-	googleOAuthEndpoint := fmt.Sprintf("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=%s", rtr.config.env["GOOGLE_FIREBASE_API_KEY"])
-	gAuthResponse, err := http.Post(googleOAuthEndpoint, "application/json", bytes.NewBuffer(req))
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		err = json.NewEncoder(w).Encode(map[string]string{
-			"error": fmt.Sprintf("error calling google oauth endpoint to check users sign in credentials: %v", err.Error()),
-		})
-
-		if err != nil {
-			rtr.logger.Error("error while json encoding an error during google oauth endpoint checking for user sign in credentials")
-		}
-
-		return
-	}
-
-	if gAuthResponse.StatusCode != 200 {
-		w.WriteHeader(http.StatusBadRequest)
-		err = json.NewEncoder(w).Encode(map[string]string{
-			"error": "error returned while cross referencing user input credentials with what is stored on firebase",
-		})
-
-		if err != nil {
-			rtr.logger.Error("error while json encoding an error during cross referencing user input credentials with what is stored on firebase")
-		}
-
-		return
-	}
-
-	fbAuthRes := &FirebaseAuthResponseOk{}
-	if err := json.NewDecoder(gAuthResponse.Body).Decode(fbAuthRes); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		err = json.NewEncoder(w).Encode(map[string]string{
-			"error": fmt.Sprintf("error unmarshalling gAuth's response: %v", err.Error()),
-		})
-
-		if err != nil {
-			rtr.logger.Error("error while json encoding an error during unmarshalling gAuth's response")
-		}
-
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(map[string]string{
-		"message":     "successfully logged in user",
-		"idToken":     fbAuthRes.IdToken,
-		"email":       fbAuthRes.Email,
-		"displayname": fbAuthRes.DisplayName,
-	})
-
-	if err != nil {
-		rtr.logger.Error("error while json encoding success message while going through email login route")
-	}
 }
 
 func (rtr *router) EmailRegister(w http.ResponseWriter, r *http.Request) {

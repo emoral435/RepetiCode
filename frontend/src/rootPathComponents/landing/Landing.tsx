@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { useTheme } from "../context/ThemeContext";
+import { useTheme } from "../../context/ThemeContext";
 import { ArrowPathRoundedSquareIcon } from "@heroicons/react/24/outline";
 const Landing = () => {
   const { cssThemes } = useTheme();

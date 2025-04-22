@@ -1,11 +1,12 @@
 // import { useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext"
-// import { auth } from "../../lib/firebase";
-// import { useNavigate } from "react-router";
+import { Outlet, useNavigate  } from "react-router";
+import { signOut, getAuth } from "firebase/auth/web-extension";
 
 const Home = () => {
   const { cssThemes } = useTheme();
-  // const navigate = useNavigate();
+  const auth = getAuth();
+  const navigate = useNavigate();
 
   // useEffect(() => {
   //   auth.onAuthStateChanged(user => {
@@ -24,6 +25,15 @@ const Home = () => {
   //   }
   // }
 
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      navigate("/");
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <div
       style={{ color: cssThemes.colors.primaryTextColor }}
@@ -33,7 +43,15 @@ const Home = () => {
         style={{ background: cssThemes.colors.primary }}
         className="border-4 w-[90%] max-w-lg flex flex-col items-center rounded-2xl shadow-xl p-8 gap-8 text-center"
       >
-        Home
+        <div>
+          Home
+        </div>
+        <button onClick={async () => {
+          await handleSignOut();
+        }}>
+          sign out
+        </button>
+        <Outlet />
       </section>
     </div>
   )

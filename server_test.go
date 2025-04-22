@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"log/slog"
@@ -55,28 +54,6 @@ func TestStatusEndpoint(t *testing.T) {
 
 	if result["message"] != "status ok" {
 		t.Errorf("Unexpected message: %v", result["message"])
-	}
-}
-
-func TestEmailLogin_MalformedRequest(t *testing.T) {
-	r := getTestRouter()
-
-	body := strings.NewReader(`{malformed-json}`)
-	req := httptest.NewRequest("POST", "/api/v1/login/email", body)
-	w := httptest.NewRecorder()
-
-	r.EmailLogin(w, req)
-
-	resp := w.Result()
-	defer func() {
-		err := resp.Body.Close()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}()
-
-	if resp.StatusCode != http.StatusInternalServerError {
-		t.Errorf("Expected 500 for bad input, got %d", resp.StatusCode)
 	}
 }
 

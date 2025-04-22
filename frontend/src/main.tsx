@@ -2,31 +2,39 @@ import './main.css'
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-
 import { BrowserRouter, Route, Routes } from "react-router";
+import { initializeApp } from 'firebase/app';
+
+import config from './lib/firebaseconfig';
 import ThemeProvider from './context/ThemeProvider';
-import Login from "./login/Login";
-import Landing from "./landing/Landing";
+import Login from "./rootPathComponents/login/Login";
+import Landing from "./rootPathComponents/landing/Landing";
 import Home from "./homePathComponents/home/Home";
-import Register from './register/Register';
-import Layout from './layout/Layout';
-import NotFound404 from './not-found-404/NotFound404';
+import Register from './rootPathComponents/register/Register';
+import Layout from './rootPathComponents/layout/Layout';
+import NotFound404 from './rootPathComponents/not-found-404/NotFound404';
+import AuthContextProvider from './context/AuthContextProvider';
+import HomeLayout from './homePathComponents/homeLayout/HomeLayout';
+
+initializeApp(config);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <ThemeProvider>
-        <Routes>
-          <Route path="/" element={<Layout />} >
-            <Route index element={<Landing />} />
-            <Route path="login" element={<Login />} />
-            <Route path="register" element={<Register />} />
-            <Route path="*" element={<NotFound404 />} />
-            <Route path="home" >
-              <Route index element={<Home />} />
+        <AuthContextProvider>
+          <Routes>
+            <Route path="/" element={<Layout />} >
+              <Route index element={<Landing />} />
+              <Route path="login" element={<Login />} />
+              <Route path="register" element={<Register />} />
+              <Route path="*" element={<NotFound404 />} />
+              <Route path="home" element={<HomeLayout />} >
+                <Route index element={<Home />} />
+              </Route>
             </Route>
-          </Route>
-        </Routes>
+          </Routes>
+        </AuthContextProvider>
       </ThemeProvider>
     </BrowserRouter>
   </StrictMode>,

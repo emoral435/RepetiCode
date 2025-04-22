@@ -1,5 +1,5 @@
 import { Link, Outlet } from "react-router-dom";
-import { useTheme } from "../context/ThemeContext.ts";
+import { useTheme } from "../../context/ThemeContext.ts";
 import { SunIcon } from "@heroicons/react/24/outline";
 
 
