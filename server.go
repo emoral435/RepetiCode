@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/auth"
@@ -25,6 +26,7 @@ func routes(cfg *config, logger *slog.Logger) *http.ServeMux {
 	m.HandleFunc("GET /status", r.ServerStatus)
 
 	m.HandleFunc("POST /api/v1/register/email", r.EmailRegister)
+	m.HandleFunc("GET /api/v1/user/{uid}/{idToken}", r.GetUserProfileData)
 
 	// catch-all routing solution for serving static React frontend with Go, handling React Router routing cases
 	// see: https://stackoverflow.com/a/64687181
@@ -39,10 +41,11 @@ type router struct {
 	logger *slog.Logger
 }
 
-func (r *router) StatusOK(w http.ResponseWriter, httpStatus int, message string) {
+func (r *router) StatusOK(w http.ResponseWriter, httpStatus int, message string, data interface{}) {
 	w.WriteHeader(httpStatus)
-	err := json.NewEncoder(w).Encode(map[string]string{
+	err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"message": message,
+		"data":    data,
 	})
 
 	if err != nil {
@@ -143,13 +146,75 @@ func (rtr *router) EmailRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newUser := (&auth.UserToCreate{}).Email(user.Email).Password(user.Password).DisplayName(user.DisplayName)
-	if _, err = client.CreateUser(rtr.config.ctx, newUser); err != nil {
+	tryUser := (&auth.UserToCreate{}).Email(user.Email).Password(user.Password).DisplayName(user.DisplayName)
+	createdUser, err := client.CreateUser(rtr.config.ctx, tryUser)
+	if err != nil {
 		rtr.StatusError(w, http.StatusBadRequest, "register email, bad request", err)
 		return
 	}
 
-	rtr.StatusOK(w, http.StatusOK, "successfully created new user")
+	newUserDocument := &UserDocument{
+		UID:         createdUser.UID,
+		Tier:        "Free",
+		CurrentGoal: "Unchosen!",
+		Metrics: UserDocumentMetrics{
+			Height:   0,
+			Weight:   0,
+			JoinDate: time.Now(),
+		},
+		Settings: UserDocumentSettings{
+			UnitsPreference:  "Metric",
+			SubscriptionTier: "Free",
+		},
+	}
+
+	if err := CreateUserDocument(rtr, newUserDocument); err != nil {
+		rtr.StatusError(w, http.StatusInternalServerError, "register email firestore creating new user doc", err)
+		return
+	}
+
+	data := make(map[string]interface{})
+	rtr.StatusOK(w, http.StatusOK, "successfully created new user", data)
+}
+
+func (rtr *router) GetUserProfileData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	uid := r.PathValue("uid")
+	idToken := r.PathValue("idToken")
+
+	if rtr.config.firebaseApp == nil {
+		rtr.StatusError(w, http.StatusInternalServerError,
+			"get user profile data, firebaseApp is not initialized",
+			fmt.Errorf("firebaseApp is not initialized"))
+		return
+	}
+
+	client, err := rtr.config.firebaseApp.Auth(rtr.config.ctx)
+	if err != nil {
+		rtr.StatusError(w, http.StatusInternalServerError,
+			"get user profile data, error initializing client",
+			fmt.Errorf("error initializing client"))
+		return
+	}
+
+	_, err = client.VerifyIDToken(rtr.config.ctx, idToken)
+	if err != nil {
+		rtr.StatusError(w, http.StatusBadRequest,
+			"get user profile data, bad idToken",
+			fmt.Errorf("bad idToken"))
+		return
+	}
+
+	// if the ID token was valid, we return the user based off their UID
+	userDoc, err := GetUserDocument(rtr, uid)
+	if err != nil {
+		rtr.StatusError(w, http.StatusInternalServerError,
+			"getting user documents",
+			fmt.Errorf("error while trying to get user document: %v", err.Error()))
+		return
+	}
+
+	rtr.StatusOK(w, http.StatusOK, "successfully retrieved user data", userDoc)
 }
 
 func initEnvironmentVariables() (map[string]string, error) {

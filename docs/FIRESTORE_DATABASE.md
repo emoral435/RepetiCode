@@ -7,18 +7,23 @@ The following collections and document schemas are used within the application:
 Query for document: `/users/{document_id}`
 User Document Schema:
 
-```js
-{
-  currentGoal: "Gaintaining" (string)
-  displayName "emoral435" (string)
-  metrics (map) {
-    height 173 (number)
-    joinDate April 25, 2025 at 12:00:00 PM UTC-5 (timestamp)
-    weight 145 (number)
-  }
-  settings (map) {
-    unitsPreference "metric" (string)
-  }
+```go
+type UserDocument struct {
+	UID         string
+	Tier        string
+	CurrentGoal string
+	Metrics     UserDocumentMetrics
+	Settings    UserDocumentSettings
+}
+
+type UserDocumentMetrics struct {
+	Height   int
+	JoinDate time.Time
+	Weight   int
+}
+
+type UserDocumentSettings struct {
+	UnitsPreference string
 }
 ```
 
