@@ -37,7 +37,7 @@ const Layout = () => {
         backgroundImage: `radial-gradient(${cssThemes.colors.primary} 1px, transparent 0)`,
         backgroundSize: "20px 20px"
       }}
-      className="h-screen flex flex-col justify-between"
+      className="min-h-screen flex flex-col justify-between"
     >
       <header
         style={{ background: cssThemes.colors.primary }}
@@ -96,7 +96,10 @@ const Layout = () => {
         <Outlet />
       </main>
 
-      <footer className="flex w-full justify-center gap-4">
+      <footer
+        style={{ background: cssThemes.colors.primary }}
+        className="flex flex-col sm:flex-row items-center sm:justify-center gap-4 p-4 border-4 rounded-2xl shadow-xl m-4 text-nowrap"
+      >
         <div>© Copyright {currentYear} ©</div>
         <a href="mailto:emoral435@gmail.com">Contact Me!</a>
       </footer>

@@ -33,7 +33,7 @@ func TestStatusEndpoint(t *testing.T) {
 	req := httptest.NewRequest("GET", "/status", nil)
 	w := httptest.NewRecorder()
 
-	r.Status(w, req)
+	r.ServerStatus(w, req)
 
 	resp := w.Result()
 	defer func() {
@@ -52,7 +52,7 @@ func TestStatusEndpoint(t *testing.T) {
 		t.Fatalf("Error decoding response: %v", err)
 	}
 
-	if result["message"] != "status ok" {
+	if result["message"] != "Server status:" {
 		t.Errorf("Unexpected message: %v", result["message"])
 	}
 }

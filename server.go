@@ -22,24 +22,15 @@ func routes(cfg *config, logger *slog.Logger) *http.ServeMux {
 		logger: logger,
 	}
 
-	m.HandleFunc("GET /status", r.Status)
+	m.HandleFunc("GET /status", r.ServerStatus)
 
 	m.HandleFunc("POST /api/v1/register/email", r.EmailRegister)
 
 	// catch-all routing solution for serving static React frontend with Go, handling React Router routing cases
 	// see: https://stackoverflow.com/a/64687181
-	m.HandleFunc("GET /", r.serveFrontend)
+	m.HandleFunc("GET /", r.ServeFrontend)
 
 	return m
-}
-
-// The Routes interface helps us with implementing the routes that our API will serve and handle.
-//
-// The reasoning behind using an interface for this is to allow us to mock our API tests!
-type Routes interface {
-	Status(w http.ResponseWriter, r *http.Request)
-	EmailLogin(w http.ResponseWriter, r *http.Request)
-	EmailRegister(w http.ResponseWriter, r *http.Request)
 }
 
 // implements the Routes interface
@@ -48,18 +39,42 @@ type router struct {
 	logger *slog.Logger
 }
 
-func (r *router) Status(w http.ResponseWriter, _ *http.Request) {
+func (r *router) StatusOK(w http.ResponseWriter, httpStatus int, message string) {
+	w.WriteHeader(httpStatus)
+	err := json.NewEncoder(w).Encode(map[string]string{
+		"message": message,
+	})
+
+	if err != nil {
+		errMsg := fmt.Sprintf("error returning json marshalling for the following success message: %s", message)
+		r.logger.Error(errMsg)
+	}
+}
+
+func (r *router) StatusError(w http.ResponseWriter, httpStatus int, endpointPathDescriptor string, rootErr error) {
+	w.WriteHeader(httpStatus)
+	err := json.NewEncoder(w).Encode(map[string]string{
+		"error": fmt.Sprintf("error marshalling clients request during API path %s: %v", endpointPathDescriptor, rootErr.Error()),
+	})
+
+	if err != nil {
+		errMsg := fmt.Sprintf("error while json encoding in endpoint path: %s", endpointPathDescriptor)
+		r.logger.Error(errMsg)
+	}
+}
+
+func (r *router) ServerStatus(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	response, err := json.Marshal(struct {
 		Message string `json:"message"`
 		Code    int    `json:"code"`
-	}{"status ok", http.StatusOK})
+	}{"Server status:", http.StatusOK})
 
 	if err != nil {
 		slog.Error("error marshalling status: %w", err.Error(), "")
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	if _, err = w.Write(response); err != nil {
 		slog.Error("error writing response back during status endpoint: %w", err.Error(), "")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -88,7 +103,7 @@ type FirebaseAuthResponseOk struct {
 	IdToken      string `json:"idToken"`
 }
 
-func (rtr *router) serveFrontend(w http.ResponseWriter, r *http.Request) {
+func (rtr *router) ServeFrontend(w http.ResponseWriter, r *http.Request) {
 	fs := http.FileServer(http.Dir(rtr.config.frontendBuildPath))
 	// If the requested file exists then return if; otherwise return index.html (fileserver default page)
 	if r.URL.Path != "/" {
@@ -109,68 +124,32 @@ func (rtr *router) serveFrontend(w http.ResponseWriter, r *http.Request) {
 func (rtr *router) EmailRegister(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	user := &NewUserEmailAuthRequest{}
+
 	if err := json.NewDecoder(r.Body).Decode(user); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		err = json.NewEncoder(w).Encode(map[string]string{
-			"error": fmt.Sprintf("error marshalling clients request while registering email: %v", err.Error()),
-		})
-
-		if err != nil {
-			rtr.logger.Error("error while json encoding an error during marshalling clients request while registering email")
-		}
-
+		rtr.StatusError(w, http.StatusInternalServerError, "register email", err)
 		return
 	}
 
 	if rtr.config.firebaseApp == nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		err := json.NewEncoder(w).Encode(map[string]string{
-			"error": "error while trying to register new user, firebaseApp is not initialized",
-		})
-
-		if err != nil {
-			rtr.logger.Error("error while json encoding an error while trying to register new user, firebaseApp is not initialized")
-		}
-
+		rtr.StatusError(w, http.StatusInternalServerError,
+			"register email, firebaseApp is not initialized",
+			fmt.Errorf("firebaseApp is not initialized"))
 		return
 	}
 
 	client, err := rtr.config.firebaseApp.Auth(rtr.config.ctx)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		err1 := json.NewEncoder(w).Encode(map[string]string{
-			"error": fmt.Sprintf("error getting auth client when trying to make new user from email, error: %v", err.Error()),
-		})
-
-		if err1 != nil {
-			rtr.logger.Error("error while json encoding an error auth client when trying to make new user from email")
-		}
-
+		rtr.StatusError(w, http.StatusInternalServerError, "register new user from email", err)
 		return
 	}
 
 	newUser := (&auth.UserToCreate{}).Email(user.Email).Password(user.Password).DisplayName(user.DisplayName)
 	if _, err = client.CreateUser(rtr.config.ctx, newUser); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		err = json.NewEncoder(w).Encode(map[string]string{
-			"error": fmt.Sprintf("error trying to make user: %s", err.Error()),
-		})
-
-		if err != nil {
-			rtr.logger.Error("error while json encoding an error trying to make user")
-		}
-
+		rtr.StatusError(w, http.StatusBadRequest, "register email, bad request", err)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(map[string]string{
-		"message": "successfully created new user",
-	})
-
-	if err != nil {
-		rtr.logger.Error("error while json encoding success message while going through email register route")
-	}
+	rtr.StatusOK(w, http.StatusOK, "successfully created new user")
 }
 
 func initEnvironmentVariables() (map[string]string, error) {
