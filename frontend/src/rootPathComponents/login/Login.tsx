@@ -24,6 +24,9 @@ const Login = () => {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      // if there where no errors, we want to clear our registered message and the session storage that triggers the registered message
+      setRegisteredMsg("");
+      sessionStorage.clear();
       navigate("/home");
     } catch (err) {
       console.error("Login error:", err);
