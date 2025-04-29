@@ -4,15 +4,37 @@ import { getAuth } from "firebase/auth";
 import { use, useState } from "react";
 import { Suspense } from "react";
 
-type userRecord = {
+interface UserDocumentPayloadSettings {
+  UnitsPreference: 'Imperial' | 'Metric',
+  SubscriptionTier: 'Free' | 'Pro' | null
+}
+
+interface UserDocumentPayloadMetrics {
+  Weight: number,
+  Height: number,
+  JoinDate: string,
+}
+
+interface UserDocumentPayload {
+  Metrics: UserDocumentPayloadMetrics,
+  Settings: UserDocumentPayloadSettings,
+  CurrentGoal: string,
+}
+
+interface UserData  {
+  data: UserDocumentPayload,
+  message: string, 
   displayName: string,
-  goal: string,
-  weight: number,
-  height: number,
-  joinDate: Date,
-  unitsPreference: 'Imperial' | 'Metric',
-  workoutRoutines: number,
-  subscriptionTier: 'Free' | 'Pro'
+}
+
+interface FlattenedUserData {
+  displayName: string,
+  CurrentGoal: string,
+  Weight: number,
+  Height: number,
+  JoinDate: string,
+  UnitsPreference: 'Imperial' | 'Metric',
+  SubscriptionTier: 'Free' | 'Pro' | null,
 }
 
 const loadUserProfileData = async () => {
@@ -22,41 +44,53 @@ const loadUserProfileData = async () => {
   try {
     const origin = window.location.origin;
     const idToken = await currentUser?.getIdToken();
-    const res = await fetch(origin + "/api/v1/user/" + idToken, {
-      method: "POST",
+    const uid = currentUser?.uid;
+    const res = await fetch(origin + "/api/v1/user/" + uid + "/" + idToken, {
+      method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
     })
 
-    console.log("We got here")
     const data = await res.json();
     // if there was an error message within the JSON response
     if (Object.prototype.hasOwnProperty.call(data, "error")) {
       throw Error(`response returned error: ${data.error}`);
     }
 
-    return data;
+    const displayName = currentUser?.displayName;
+    return {...data, "displayName": displayName};
   } catch (error) {
-    console.log("HUH:" + error);
+    return { "error": `error while trying to fetch user profile data: ${error}` }
   }
 }
 
 const ProfileData = ({ dataPromise }: any) => {
-  const data = use(dataPromise);
-  console.log(data);
+  const userData: UserData = use(dataPromise);
+
+  // if we encountered an error while trying to fetch user data, reroute to login screen again
+  if (Object.prototype.hasOwnProperty.call(userData, "error") ||
+    !Object.prototype.hasOwnProperty.call(userData, "displayName")) {
+    sessionStorage.setItem("message", `error while trying to get user profile data: ${userData}`)
+  }
+
+  const userMetrics = userData.data.Metrics;
+  const userSettings = userData.data.Settings;
+
+  if (userMetrics.JoinDate.length >= 10) {
+    userMetrics.JoinDate = userMetrics.JoinDate.slice(0, 10);
+  }
 
   const { cssThemes } = useTheme();
 
-  const [userProfile, setUserProfile] = useState<userRecord>({
-    displayName: "loading...",
-    goal: "loading...",
-    weight: 0,
-    height: 0,
-    joinDate: new Date(),
-    unitsPreference: "Metric",
-    workoutRoutines: 0,
-    subscriptionTier: "Free",
+  const [userProfile, setUserProfile] = useState<FlattenedUserData>({
+    displayName: userData.displayName,
+    CurrentGoal: userData.data.CurrentGoal,
+    Weight: userMetrics.Weight,
+    Height: userMetrics.Height,
+    JoinDate: userMetrics.JoinDate,
+    UnitsPreference: userSettings.UnitsPreference,
+    SubscriptionTier: userSettings.SubscriptionTier,
   });
 
   const [editField, setEditField] = useState<string | null>(null);
@@ -70,7 +104,7 @@ const ProfileData = ({ dataPromise }: any) => {
   const saveEditing = (field: keyof typeof userProfile) => {
     setUserProfile(prev => ({
       ...prev,
-      [field]: field === "weight" || field === "height"
+      [field]: field === "Weight" || field === "Height"
         ? parseFloat(tempValue)
         : tempValue
     }));
@@ -142,7 +176,7 @@ const ProfileData = ({ dataPromise }: any) => {
               className="w-full sm:w-[48%] border-4 p-4 rounded-2xl shadow-md hover:shadow-lg transition flex flex-col items-center justify-center"
             >
               <p className="font-semibold">Units Preference:</p>
-              {editField === "unitsPreference" ? (
+              {editField === "UnitsPreference" ? (
                 <>
                   <select
                     value={tempValue}
@@ -153,7 +187,7 @@ const ProfileData = ({ dataPromise }: any) => {
                     <option value="Metric">Metric (kg, m)</option>
                   </select>
                   <button
-                    onClick={() => saveEditing("unitsPreference")}
+                    onClick={() => saveEditing("UnitsPreference")}
                     style={{ background: cssThemes.colors.secondary }}
                     className="mt-2 border px-2 py-1 rounded-lg shadow hover:shadow-md transition"
                   >
@@ -162,9 +196,9 @@ const ProfileData = ({ dataPromise }: any) => {
                 </>
               ) : (
                 <>
-                  <p>{userProfile.unitsPreference}</p>
+                  <p>{userProfile.UnitsPreference}</p>
                   <button
-                    onClick={() => startEditing("unitsPreference")}
+                    onClick={() => startEditing("UnitsPreference")}
                     style={{ background: cssThemes.colors.secondary }}
                     className="mt-2 border px-2 py-1 rounded-lg shadow hover:shadow-md transition"
                   >
@@ -179,7 +213,7 @@ const ProfileData = ({ dataPromise }: any) => {
               className="w-full sm:w-[48%] border-4 p-4 rounded-2xl shadow-md hover:shadow-lg transition flex flex-col items-center justify-center"
             >
               <p className="font-semibold">Subscription Tier</p>
-                <p className="font-bold">{userProfile.subscriptionTier}</p>
+                <p className="font-bold">{userProfile.SubscriptionTier}</p>
             </div>
           </div>
           {/* Divider: User Metrics */}
@@ -191,7 +225,7 @@ const ProfileData = ({ dataPromise }: any) => {
               className="w-full sm:w-[30%] border-4 p-4 rounded-2xl shadow-md hover:shadow-lg transition flex flex-col items-center justify-center"
             >
               <p className="font-semibold">Weight</p>
-              {editField === "weight" ? (
+              {editField === "Weight" ? (
                 <>
                   <input
                     type="number"
@@ -200,7 +234,7 @@ const ProfileData = ({ dataPromise }: any) => {
                     className="border px-2 py-1 rounded-2xl w-full text-black"
                   />
                   <button
-                    onClick={() => saveEditing("weight")}
+                    onClick={() => saveEditing("Weight")}
                     style={{ background: cssThemes.colors.secondary }}
                     className="mt-2 border px-2 py-1 rounded-lg shadow hover:shadow-md transition"
                   >
@@ -209,9 +243,9 @@ const ProfileData = ({ dataPromise }: any) => {
                 </>
               ) : (
                 <>
-                  <p>{userProfile.weight} {userProfile.unitsPreference === "Imperial" ? "lbs" : "kg"}</p>
+                  <p>{userProfile.Weight} {userProfile.UnitsPreference === "Imperial" ? "lbs" : "kg"}</p>
                   <button
-                    onClick={() => startEditing("weight")}
+                    onClick={() => startEditing("Weight")}
                     style={{ background: cssThemes.colors.secondary }}
                     className="mt-2 border px-2 py-1 rounded-lg shadow hover:shadow-md transition"
                   >
@@ -226,7 +260,7 @@ const ProfileData = ({ dataPromise }: any) => {
               className="w-full sm:w-[30%] border-4 p-4 rounded-2xl shadow-md hover:shadow-lg transition flex flex-col items-center justify-center"
             >
               <p className="font-semibold">Height</p>
-              {editField === "height" ? (
+              {editField === "Height" ? (
                 <>
                   <input
                     type="number"
@@ -235,7 +269,7 @@ const ProfileData = ({ dataPromise }: any) => {
                     className="border px-2 py-1 rounded-2xl w-full text-black"
                   />
                   <button
-                    onClick={() => saveEditing("height")}
+                    onClick={() => saveEditing("Height")}
                     style={{ background: cssThemes.colors.secondary }}
                     className="mt-2 border px-2 py-1 rounded-lg shadow hover:shadow-md transition"
                   >
@@ -244,9 +278,9 @@ const ProfileData = ({ dataPromise }: any) => {
                 </>
               ) : (
                 <>
-                  <p>{userProfile.height} {userProfile.unitsPreference === "Imperial" ? "ft" : "m"}</p>
+                  <p>{userProfile.Height} {userProfile.UnitsPreference === "Imperial" ? "ft" : "m"}</p>
                   <button
-                    onClick={() => startEditing("height")}
+                    onClick={() => startEditing("Height")}
                     style={{ background: cssThemes.colors.secondary }}
                     className="mt-2 border px-2 py-1 rounded-lg shadow hover:shadow-md transition"
                   >
@@ -261,17 +295,9 @@ const ProfileData = ({ dataPromise }: any) => {
               className="w-full sm:w-[30%] border-4 p-4 rounded-2xl shadow-md hover:shadow-lg transition flex flex-col items-center justify-center"
             >
               <p className="font-semibold">Join Date</p>
-              <p>{userProfile.joinDate.toLocaleDateString()}</p>
+              <p>{userProfile.JoinDate}</p>
             </div>
           </div>
-          {/* Workout Routines */}
-          <section
-            style={{ background: cssThemes.colors.background }}
-            className="border-4 w-full flex flex-col items-center p-6 gap-4 rounded-2xl shadow-2xl mt-6"
-          >
-            <h3 className="text-2xl font-bold">Workout Routines</h3>
-            <p className="text-xl">TODO routines</p>
-          </section>
         </section>
       </div>
   )

@@ -24,6 +24,7 @@ type UserDocumentMetrics struct {
 
 type UserDocumentSettings struct {
 	UnitsPreference string
+	SettingsTier    string
 }
 ```
 

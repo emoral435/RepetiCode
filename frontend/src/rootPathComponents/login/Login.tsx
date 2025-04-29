@@ -15,7 +15,7 @@ const Login = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    setRegisteredMsg(sessionStorage.getItem("registered") ?? '');
+    setRegisteredMsg(sessionStorage.getItem("message") ?? '');
   }, [])
 
   const handleEmailLogin = async (e: React.FormEvent) => {
