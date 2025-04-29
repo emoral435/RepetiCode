@@ -25,6 +25,10 @@ buildfrontend:
 run: buildfrontend builddocker rundocker
 	echo "Running on 127.0.0.1:8080"
 
+.PHONY: runlocal
+runlocal: buildfrontend
+	echo "Running on http://localhost:8080"
+	go run .
 
 .PHONY: gotest
 gotest:

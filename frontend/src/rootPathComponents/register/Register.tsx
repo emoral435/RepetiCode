@@ -40,7 +40,7 @@ const Register = () => {
       }
 
       // load within the session that the user just registered
-      sessionStorage.setItem("registered", "Successfully registered account! Welcome.");
+      sessionStorage.setItem("message", "Successfully registered account! Welcome.");
       // if we get here, we can navigate the user to navigate to Log In
       navigate("/login");
     } catch (err) {
