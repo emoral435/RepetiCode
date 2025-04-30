@@ -70,3 +70,21 @@ func TestGetUserDocument(t *testing.T) {
 		t.Logf("GetUserDocument error (expected without Firestore): %v", err)
 	}
 }
+
+func TestUpdateUserDocument(t *testing.T) {
+	rtr := setupTestRouter(t)
+
+	updates := map[string]interface{}{
+		"CurrentGoal": "Run a Marathon",
+		"Weight":      70,
+	}
+
+	err := UpdateUserDocument(rtr, "test-user-123", updates)
+
+	if err == nil {
+		t.Logf("UpdateUserDocument passed without error (unexpected without real Firestore)")
+	} else {
+		// You can inspect the error string if you want to test specific behavior
+		t.Logf("UpdateUserDocument returned expected error: %v", err)
+	}
+}
