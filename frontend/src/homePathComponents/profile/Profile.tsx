@@ -1,8 +1,10 @@
 import { useTheme } from "../../context/ThemeContext";
 import { UserCircleIcon } from "@heroicons/react/24/outline";
-import { getAuth } from "firebase/auth";
-import { use, useState } from "react";
+import { getAuth, updateProfile } from "firebase/auth";
+import { use, useEffect, useState } from "react";
 import { Suspense } from "react";
+import { useNavigate } from "react-router";
+import { formatWeight, formatHeight } from "../../lib/weightConversions";
 
 interface UserDocumentPayloadSettings {
   UnitsPreference: 'Imperial' | 'Metric',
@@ -21,20 +23,8 @@ interface UserDocumentPayload {
   CurrentGoal: string,
 }
 
-interface UserData  {
-  data: UserDocumentPayload,
-  message: string, 
-  displayName: string,
-}
-
-interface FlattenedUserData {
-  displayName: string,
-  CurrentGoal: string,
-  Weight: number,
-  Height: number,
-  JoinDate: string,
-  UnitsPreference: 'Imperial' | 'Metric',
-  SubscriptionTier: 'Free' | 'Pro' | null,
+interface ProfileDataProps {
+  dataPromise: Promise<UserDocumentPayload>;
 }
 
 const loadUserProfileData = async () => {
@@ -52,64 +42,151 @@ const loadUserProfileData = async () => {
       },
     })
 
-    const data = await res.json();
+    const resJSON = await res.json();
     // if there was an error message within the JSON response
-    if (Object.prototype.hasOwnProperty.call(data, "error")) {
-      throw Error(`response returned error: ${data.error}`);
+    if (Object.prototype.hasOwnProperty.call(resJSON, "error")) {
+      throw Error(`response returned error: ${resJSON.error}`);
     }
 
-    const displayName = currentUser?.displayName;
-    return {...data, "displayName": displayName};
+    // destructure response to just receive the data
+    return resJSON.data;
   } catch (error) {
+    console.error(`error while trying to fetch user profile data: ${error}`);
     return { "error": `error while trying to fetch user profile data: ${error}` }
   }
 }
 
-const ProfileData = ({ dataPromise }: any) => {
-  const userData: UserData = use(dataPromise);
-
-  // if we encountered an error while trying to fetch user data, reroute to login screen again
-  if (Object.prototype.hasOwnProperty.call(userData, "error") ||
-    !Object.prototype.hasOwnProperty.call(userData, "displayName")) {
-    sessionStorage.setItem("message", `error while trying to get user profile data: ${userData}`)
-  }
-
-  const userMetrics = userData.data.Metrics;
-  const userSettings = userData.data.Settings;
-
-  if (userMetrics.JoinDate.length >= 10) {
-    userMetrics.JoinDate = userMetrics.JoinDate.slice(0, 10);
-  }
-
-  const { cssThemes } = useTheme();
-
-  const [userProfile, setUserProfile] = useState<FlattenedUserData>({
-    displayName: userData.displayName,
-    CurrentGoal: userData.data.CurrentGoal,
-    Weight: userMetrics.Weight,
-    Height: userMetrics.Height,
-    JoinDate: userMetrics.JoinDate,
-    UnitsPreference: userSettings.UnitsPreference,
-    SubscriptionTier: userSettings.SubscriptionTier,
-  });
-
+const ProfileData = ({ dataPromise }: ProfileDataProps) => {
+  const userData: UserDocumentPayload = use(dataPromise);
   const [editField, setEditField] = useState<string | null>(null);
+  const [prevUnit, setPrevUnit] = useState<"Imperial" | "Metric">("Metric");
   const [tempValue, setTempValue] = useState<string>("");
+  const { cssThemes } = useTheme();
+  const navigate = useNavigate();
+  
+  const auth = getAuth();
+  const currentUser = auth.currentUser;
+  
+  if (userData.Metrics.JoinDate.length >= 10) {
+    userData.Metrics.JoinDate = userData.Metrics.JoinDate.slice(0, 10);
+  }
+  
+  const [userProfile, setUserProfile] = useState<UserDocumentPayload>({...userData});
+  
+  useEffect(() => {
+    if (prevUnit !== userProfile.Settings.UnitsPreference) {
+      userProfile.Metrics.Weight = formatWeight(prevUnit === "Imperial", 
+        userProfile.Settings.UnitsPreference === "Imperial", 
+        userProfile.Metrics.Weight);
 
-  const startEditing = (field: keyof typeof userProfile) => {
+        userProfile.Metrics.Height = formatHeight(prevUnit === "Imperial", 
+          userProfile.Settings.UnitsPreference === "Imperial", 
+          userProfile.Metrics.Height);
+
+      setPrevUnit(userProfile.Settings.UnitsPreference);
+    }
+  }, [prevUnit, userProfile.Metrics, userProfile.Settings.UnitsPreference])
+
+  useEffect(() => {
+    // if we encountered an error while trying to fetch user data, reroute to login screen again
+    if (Object.prototype.hasOwnProperty.call(userData, "error")) {
+      sessionStorage.setItem("message", `error while trying to get user profile data: ${userData}`)
+      navigate("/login");
+    }
+    
+    // if the current user is not logged in, redirect back to login
+    if (currentUser === null) {
+      sessionStorage.setItem("message", `error while trying to get user profile data, as current user is null`)
+      navigate("/login");
+    }
+  }, [currentUser, navigate, userData])
+
+  const startEditing = (field: string) => {
     setEditField(field);
-    setTempValue(userProfile[field]?.toString() ?? "");
+
+    if (field === "displayName") {
+      setTempValue(currentUser?.displayName ?? "");
+    } else if (field === "CurrentGoal") {
+      setTempValue(userProfile.CurrentGoal);
+    } else if (field === "Weight") {
+      setTempValue(userProfile.Metrics.Weight.toString());
+    } else if (field === "Height") {
+      setTempValue(userProfile.Metrics.Height.toString());
+    } else if (field === "UnitsPreference") {
+      setTempValue(userProfile.Settings.UnitsPreference);
+    }
   };
 
-  const saveEditing = (field: keyof typeof userProfile) => {
-    setUserProfile(prev => ({
-      ...prev,
-      [field]: field === "Weight" || field === "Height"
-        ? parseFloat(tempValue)
-        : tempValue
-    }));
+  const updateProfileSettingsFrontend = (field: string) => {
+    setUserProfile((prev) => {
+      const updated = { ...prev };
+
+      if (field === "CurrentGoal") {
+        updated.CurrentGoal = tempValue;
+      } else if (field === "Weight") {
+        updated.Metrics.Weight = parseFloat(tempValue);
+      } else if (field === "Height") {
+        updated.Metrics.Height = parseFloat(tempValue);
+      } else if (field === "UnitsPreference") {
+        updated.Settings.UnitsPreference = tempValue as "Imperial" | "Metric";
+      }
+
+      return updated;
+    });
+
     setEditField(null);
     setTempValue("");
+  };
+
+  const saveEditing = async (field: string) => {
+    try {
+      const origin = window.location.origin;
+      const idToken = await currentUser?.getIdToken();
+      const uid = currentUser?.uid;
+
+      const bodyRequest: Record<string, number | string> = {};
+
+      if (["Weight", "Height"].includes(field)) {
+        if (field === "Height") {
+          bodyRequest[`Metrics.${field}`] = formatHeight(userProfile.Settings.UnitsPreference === "Imperial", false, parseFloat(tempValue));
+        } else if (field === "Weight") {
+          bodyRequest[`Metrics.${field}`] = formatWeight(userProfile.Settings.UnitsPreference === "Imperial", false, parseFloat(tempValue));
+        }
+      } else if (["UnitsPreference"].includes(field)) {
+        bodyRequest[`Settings.${field}`] = tempValue;
+      } else if (field === "CurrentGoal") {
+        bodyRequest[field] = tempValue;
+      } else if (field === "displayName") {
+        if (currentUser) {
+          await updateProfile(currentUser, {
+            displayName: tempValue,
+          });
+
+          updateProfileSettingsFrontend(field);
+          return;
+        } else {
+          throw Error("current user is null");
+        }
+      }
+
+      const res = await fetch(`${origin}/api/v1/user/${uid}/${idToken}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(bodyRequest),
+      });
+
+      const data = await res.json();
+
+      if (Object.prototype.hasOwnProperty.call(data, "error")) {
+        throw Error(`response returned error: ${data.error}`);
+      }
+
+      updateProfileSettingsFrontend(field);
+    } catch (error) {
+      console.error(`error while trying to update user profile data: ${error}`);
+    }
   };
 
   return (
@@ -147,7 +224,9 @@ const ProfileData = ({ dataPromise }: any) => {
                   className="border px-3 py-2 rounded-2xl w-full max-w-sm text-black"
                 />
                 <button
-                  onClick={() => saveEditing("displayName")}
+                  onClick={async () => {
+                    await saveEditing("displayName")
+                  }}
                   style={{ background: cssThemes.colors.secondary }}
                   className="border-2 px-4 py-2 rounded-2xl font-semibold shadow-md hover:shadow-lg transition transform hover:scale-105"
                 >
@@ -156,13 +235,43 @@ const ProfileData = ({ dataPromise }: any) => {
               </>
             ) : (
               <>
-                <h2 className="text-3xl font-bold">{userProfile.displayName}</h2>
+                <h2 className="text-3xl font-bold">{currentUser?.displayName}</h2>
                 <button
                   onClick={() => startEditing("displayName")}
                   style={{ background: cssThemes.colors.secondary }}
                   className="border-2 px-4 py-2 rounded-2xl font-semibold shadow-md hover:shadow-lg transition transform hover:scale-105"
                 >
                   Edit Display Name
+                </button>
+              </>
+            )}
+            {editField === "CurrentGoal" ? (
+              <>
+                <input
+                  value={tempValue}
+                  onChange={(e) => setTempValue(e.target.value)}
+                  className="border px-3 py-2 rounded-2xl w-full max-w-sm text-black"
+                />
+                <button
+                  onClick={async () => {
+                    await saveEditing("CurrentGoal")
+                  }}
+                  style={{ background: cssThemes.colors.secondary }}
+                  className="border-2 px-4 py-2 rounded-2xl font-semibold shadow-md hover:shadow-lg transition transform hover:scale-105"
+                >
+                  Save
+                </button>
+              </>
+            ) : (
+              <>
+                <h3 className="text-2xl font-bold">Goal</h3>
+                <p className="text-xl">{userProfile.CurrentGoal}</p>
+                <button
+                  onClick={() => startEditing("CurrentGoal")}
+                  style={{ background: cssThemes.colors.secondary }}
+                  className="border-2 px-4 py-2 rounded-2xl font-semibold shadow-md hover:shadow-lg transition transform hover:scale-105"
+                >
+                  Edit Current Goal
                 </button>
               </>
             )}
@@ -187,7 +296,9 @@ const ProfileData = ({ dataPromise }: any) => {
                     <option value="Metric">Metric (kg, m)</option>
                   </select>
                   <button
-                    onClick={() => saveEditing("UnitsPreference")}
+                    onClick={async () => {
+                      await saveEditing("UnitsPreference")
+                    }}
                     style={{ background: cssThemes.colors.secondary }}
                     className="mt-2 border px-2 py-1 rounded-lg shadow hover:shadow-md transition"
                   >
@@ -196,7 +307,7 @@ const ProfileData = ({ dataPromise }: any) => {
                 </>
               ) : (
                 <>
-                  <p>{userProfile.UnitsPreference}</p>
+                  <p>{userProfile.Settings.UnitsPreference}</p>
                   <button
                     onClick={() => startEditing("UnitsPreference")}
                     style={{ background: cssThemes.colors.secondary }}
@@ -207,13 +318,13 @@ const ProfileData = ({ dataPromise }: any) => {
                 </>
               )}
             </div>
-            {/* Subscription Tier */}
+            {/* Subscription Tier - no edit for now */}
             <div
               style={{ background: cssThemes.colors.background }}
               className="w-full sm:w-[48%] border-4 p-4 rounded-2xl shadow-md hover:shadow-lg transition flex flex-col items-center justify-center"
             >
               <p className="font-semibold">Subscription Tier</p>
-                <p className="font-bold">{userProfile.SubscriptionTier}</p>
+                <p className="font-bold">{userProfile.Settings.SubscriptionTier}</p>
             </div>
           </div>
           {/* Divider: User Metrics */}
@@ -230,11 +341,14 @@ const ProfileData = ({ dataPromise }: any) => {
                   <input
                     type="number"
                     value={tempValue}
+                    min={0}
                     onChange={(e) => setTempValue(e.target.value)}
                     className="border px-2 py-1 rounded-2xl w-full text-black"
                   />
                   <button
-                    onClick={() => saveEditing("Weight")}
+                    onClick={async () => {
+                      await saveEditing("Weight")
+                    }}
                     style={{ background: cssThemes.colors.secondary }}
                     className="mt-2 border px-2 py-1 rounded-lg shadow hover:shadow-md transition"
                   >
@@ -243,7 +357,7 @@ const ProfileData = ({ dataPromise }: any) => {
                 </>
               ) : (
                 <>
-                  <p>{userProfile.Weight} {userProfile.UnitsPreference === "Imperial" ? "lbs" : "kg"}</p>
+                  <p>{userProfile.Metrics.Weight} {userProfile.Settings.UnitsPreference === "Imperial" ? "lbs" : "kg"}</p>
                   <button
                     onClick={() => startEditing("Weight")}
                     style={{ background: cssThemes.colors.secondary }}
@@ -265,11 +379,14 @@ const ProfileData = ({ dataPromise }: any) => {
                   <input
                     type="number"
                     value={tempValue}
+                    min={0}
                     onChange={(e) => setTempValue(e.target.value)}
                     className="border px-2 py-1 rounded-2xl w-full text-black"
                   />
                   <button
-                    onClick={() => saveEditing("Height")}
+                    onClick={async () => {
+                      await saveEditing("Height")
+                    }}
                     style={{ background: cssThemes.colors.secondary }}
                     className="mt-2 border px-2 py-1 rounded-lg shadow hover:shadow-md transition"
                   >
@@ -278,7 +395,7 @@ const ProfileData = ({ dataPromise }: any) => {
                 </>
               ) : (
                 <>
-                  <p>{userProfile.Height} {userProfile.UnitsPreference === "Imperial" ? "ft" : "m"}</p>
+                  <p>{userProfile.Metrics.Height} {userProfile.Settings.UnitsPreference === "Imperial" ? "ft" : "cm"}</p>
                   <button
                     onClick={() => startEditing("Height")}
                     style={{ background: cssThemes.colors.secondary }}
@@ -295,7 +412,7 @@ const ProfileData = ({ dataPromise }: any) => {
               className="w-full sm:w-[30%] border-4 p-4 rounded-2xl shadow-md hover:shadow-lg transition flex flex-col items-center justify-center"
             >
               <p className="font-semibold">Join Date</p>
-              <p>{userProfile.JoinDate}</p>
+              <p>{userProfile.Metrics.JoinDate}</p>
             </div>
           </div>
         </section>
@@ -304,10 +421,8 @@ const ProfileData = ({ dataPromise }: any) => {
 }
 
 const Profile = () => {
-  
-
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div className="flex justify-center">Loading...</div>}>
       <ProfileData dataPromise={loadUserProfileData()} />
     </Suspense>
   );

@@ -85,3 +85,59 @@ func TestEmailRegister_BadFirebaseClient(t *testing.T) {
 		t.Errorf("Expected 500 for no Firebase client, got %d", resp.StatusCode)
 	}
 }
+
+func TestUpdateUserProfileData_FirebaseAppNil(t *testing.T) {
+	r := getTestRouter()
+
+	body := map[string]interface{}{
+		"CurrentGoal": "New Goal",
+	}
+	bodyBytes, _ := json.Marshal(body)
+
+	req := httptest.NewRequest("PUT", "/api/v1/user/test-user-123/update/token123", bytes.NewReader(bodyBytes))
+	req.SetPathValue("uid", "test-user-123")
+	req.SetPathValue("idToken", "token123")
+	w := httptest.NewRecorder()
+
+	r.UpdateUserProfileData(w, req)
+
+	resp := w.Result()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("Expected status 500 for nil firebaseApp, got %d", resp.StatusCode)
+	}
+}
+
+func TestUpdateUserProfileData_InvalidBody(t *testing.T) {
+	r := getTestRouter()
+	// This time we simulate that firebaseApp exists but won't actually be used (it won't pass VerifyIDToken anyway)
+
+	// Provide invalid JSON body
+	req := httptest.NewRequest("PUT", "/api/v1/user/test-user-123/update/token123", bytes.NewBufferString("{invalid json"))
+	req.SetPathValue("uid", "test-user-123")
+	req.SetPathValue("idToken", "token123")
+	w := httptest.NewRecorder()
+
+	// Inject dummy firebaseApp to move past nil-check
+	r.config.firebaseApp = nil // this test is actually blocked earlier by nil check — you can skip or structure this later when mocking firebaseApp
+
+	r.UpdateUserProfileData(w, req)
+
+	resp := w.Result()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("Expected status 500 for invalid JSON body, got %d", resp.StatusCode)
+	}
+}

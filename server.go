@@ -27,6 +27,7 @@ func routes(cfg *config, logger *slog.Logger) *http.ServeMux {
 
 	m.HandleFunc("POST /api/v1/register/email", r.EmailRegister)
 	m.HandleFunc("GET /api/v1/user/{uid}/{idToken}", r.GetUserProfileData)
+	m.HandleFunc("PUT /api/v1/user/{uid}/{idToken}", r.UpdateUserProfileData)
 
 	// catch-all routing solution for serving static React frontend with Go, handling React Router routing cases
 	// see: https://stackoverflow.com/a/64687181
@@ -173,8 +174,8 @@ func (rtr *router) EmailRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := make(map[string]interface{})
-	rtr.StatusOK(w, http.StatusOK, "successfully created new user", data)
+	arbitratryReturnData := make(map[string]interface{})
+	rtr.StatusOK(w, http.StatusOK, "successfully created new user", arbitratryReturnData)
 }
 
 func (rtr *router) GetUserProfileData(w http.ResponseWriter, r *http.Request) {
@@ -215,6 +216,52 @@ func (rtr *router) GetUserProfileData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rtr.StatusOK(w, http.StatusOK, "successfully retrieved user data", userDoc)
+}
+
+func (rtr *router) UpdateUserProfileData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	uid := r.PathValue("uid")
+	idToken := r.PathValue("idToken")
+
+	if rtr.config.firebaseApp == nil {
+		rtr.StatusError(w, http.StatusInternalServerError,
+			"update user profile data, firebaseApp is not initialized",
+			fmt.Errorf("firebaseApp is not initialized"))
+		return
+	}
+
+	client, err := rtr.config.firebaseApp.Auth(rtr.config.ctx)
+	if err != nil {
+		rtr.StatusError(w, http.StatusInternalServerError,
+			"update user profile data, error initializing client",
+			fmt.Errorf("error initializing client"))
+		return
+	}
+
+	_, err = client.VerifyIDToken(rtr.config.ctx, idToken)
+	if err != nil {
+		rtr.StatusError(w, http.StatusBadRequest,
+			"update user profile data, bad idToken",
+			fmt.Errorf("bad idToken"))
+		return
+	}
+
+	// if the ID token was valid, we update the user with the associated uid with what was requested within the PUT body request
+	requestedUpdates := make(map[string]interface{})
+	if err := json.NewDecoder(r.Body).Decode(&requestedUpdates); err != nil {
+		rtr.StatusError(w, http.StatusInternalServerError, "update user document", err)
+		return
+	}
+
+	err = UpdateUserDocument(rtr, uid, requestedUpdates)
+	if err != nil {
+		rtr.StatusError(w, http.StatusInternalServerError,
+			"updating user documents",
+			fmt.Errorf("error while trying to update user document: %v", err.Error()))
+		return
+	}
+
+	rtr.StatusOK(w, http.StatusOK, "successfully updated user data", requestedUpdates)
 }
 
 func initEnvironmentVariables() (map[string]string, error) {
