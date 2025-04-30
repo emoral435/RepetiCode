@@ -10,7 +10,6 @@ import (
 
 type UserDocument struct {
 	UID         string
-	Tier        string
 	CurrentGoal string
 	Metrics     UserDocumentMetrics
 	Settings    UserDocumentSettings

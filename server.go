@@ -156,7 +156,6 @@ func (rtr *router) EmailRegister(w http.ResponseWriter, r *http.Request) {
 
 	newUserDocument := &UserDocument{
 		UID:         createdUser.UID,
-		Tier:        "Free",
 		CurrentGoal: "Unchosen!",
 		Metrics: UserDocumentMetrics{
 			Height:   0,
