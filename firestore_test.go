@@ -88,3 +88,27 @@ func TestUpdateUserDocument(t *testing.T) {
 		t.Logf("UpdateUserDocument returned expected error: %v", err)
 	}
 }
+
+func TestCreateRoutineDocument(t *testing.T) {
+	rtr := setupTestRouter(t)
+
+	err := CreateRoutineDocument(rtr, "test-user-123", "Push Day")
+
+	if err == nil {
+		t.Logf("CreateRoutineDocument passed without error (unexpected without real Firestore)")
+	} else {
+		t.Logf("CreateRoutineDocument returned expected error: %v", err)
+	}
+}
+
+func TestGetUserRoutines(t *testing.T) {
+	rtr := setupTestRouter(t)
+
+	routines, err := GetUserRoutines(rtr, "test-user-123")
+
+	if err == nil {
+		t.Logf("GetUserRoutines returned %d routines (unexpected without real Firestore)", len(routines))
+	} else {
+		t.Logf("GetUserRoutines returned expected error: %v", err)
+	}
+}
