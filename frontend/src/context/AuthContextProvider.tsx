@@ -45,7 +45,7 @@ const AuthContextProvider: React.FC<AuthContextProps> = ({children}) => {
           style={{
             backgroundColor: cssThemes.colors.background,
             backgroundImage: `radial-gradient(${cssThemes.colors.primary} 1px, transparent 0)`,
-          backgroundSize: "20px 20px"
+            backgroundSize: "20px 20px"
           }}
           className="w-screen h-screen flex justify-center items-center"
         >

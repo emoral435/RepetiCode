@@ -6,20 +6,16 @@ import { Suspense } from "react";
 import { useNavigate } from "react-router";
 import { formatWeight, formatHeight } from "../../lib/weightConversions";
 
-interface UserDocumentPayloadSettings {
-  UnitsPreference: 'Imperial' | 'Metric',
-  SubscriptionTier: 'Free' | 'Pro' | null
-}
-
-interface UserDocumentPayloadMetrics {
-  Weight: number,
-  Height: number,
-  JoinDate: string,
-}
-
 interface UserDocumentPayload {
-  Metrics: UserDocumentPayloadMetrics,
-  Settings: UserDocumentPayloadSettings,
+  Metrics: {
+    Weight: number,
+    Height: number,
+    JoinDate: string,
+  },
+  Settings: {
+    UnitsPreference: 'Imperial' | 'Metric',
+    SubscriptionTier: 'Free' | 'Pro' | null
+  },
   CurrentGoal: string,
 }
 

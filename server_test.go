@@ -141,3 +141,55 @@ func TestUpdateUserProfileData_InvalidBody(t *testing.T) {
 		t.Errorf("Expected status 500 for invalid JSON body, got %d", resp.StatusCode)
 	}
 }
+
+func TestCreateUserRoutineEndpoint_FirebaseNil(t *testing.T) {
+	r := getTestRouter()
+	// Firebase app is nil, should return 500
+
+	body := map[string]string{
+		"routineName": "Push Day",
+		"uid":         "test-user-123",
+		"idToken":     "fake-token",
+	}
+	bodyBytes, _ := json.Marshal(body)
+
+	req := httptest.NewRequest("POST", "/api/v1/user/routine/create", bytes.NewReader(bodyBytes))
+	w := httptest.NewRecorder()
+
+	r.CreateUserRoutine(w, req)
+
+	resp := w.Result()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("Expected 500 for nil Firebase client, got %d", resp.StatusCode)
+	}
+}
+
+func TestGetUserRoutinesEndpoint_FirebaseNil(t *testing.T) {
+	r := getTestRouter()
+
+	req := httptest.NewRequest("GET", "/api/v1/user/routine/test-user-123/fake-token", nil)
+	req.SetPathValue("uid", "test-user-123")
+	req.SetPathValue("idToken", "fake-token")
+	w := httptest.NewRecorder()
+
+	r.GetUserRoutines(w, req)
+
+	resp := w.Result()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("Expected 500 for nil Firebase client, got %d", resp.StatusCode)
+	}
+}

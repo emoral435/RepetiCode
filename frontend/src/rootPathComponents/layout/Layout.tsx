@@ -17,7 +17,6 @@ const Layout = () => {
   const userProtectedNavs = [
     { navName: "Profile", linkTo: "/home/profile" },
     { navName: "Workouts", linkTo: "/home/workouts" },
-    { navName: "Metrics", linkTo: "/home/metrics" },
   ];
 
   const handleSignOut = async () => {

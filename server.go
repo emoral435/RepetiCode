@@ -28,6 +28,8 @@ func routes(cfg *config, logger *slog.Logger) *http.ServeMux {
 	m.HandleFunc("POST /api/v1/register/email", r.EmailRegister)
 	m.HandleFunc("GET /api/v1/user/{uid}/{idToken}", r.GetUserProfileData)
 	m.HandleFunc("PUT /api/v1/user/{uid}/{idToken}", r.UpdateUserProfileData)
+	m.HandleFunc("POST /api/v1/user/routine/create", r.CreateUserRoutine)
+	m.HandleFunc("GET /api/v1/user/routine/{uid}/{idToken}", r.GetUserRoutines)
 
 	// catch-all routing solution for serving static React frontend with Go, handling React Router routing cases
 	// see: https://stackoverflow.com/a/64687181
@@ -182,26 +184,10 @@ func (rtr *router) GetUserProfileData(w http.ResponseWriter, r *http.Request) {
 	uid := r.PathValue("uid")
 	idToken := r.PathValue("idToken")
 
-	if rtr.config.firebaseApp == nil {
+	if err := MintIdToken(rtr, idToken); err != nil {
 		rtr.StatusError(w, http.StatusInternalServerError,
-			"get user profile data, firebaseApp is not initialized",
-			fmt.Errorf("firebaseApp is not initialized"))
-		return
-	}
-
-	client, err := rtr.config.firebaseApp.Auth(rtr.config.ctx)
-	if err != nil {
-		rtr.StatusError(w, http.StatusInternalServerError,
-			"get user profile data, error initializing client",
-			fmt.Errorf("error initializing client"))
-		return
-	}
-
-	_, err = client.VerifyIDToken(rtr.config.ctx, idToken)
-	if err != nil {
-		rtr.StatusError(w, http.StatusBadRequest,
-			"get user profile data, bad idToken",
-			fmt.Errorf("bad idToken"))
+			"get user profile data",
+			fmt.Errorf("error while trying to mint idToken: %v", err))
 		return
 	}
 
@@ -222,26 +208,10 @@ func (rtr *router) UpdateUserProfileData(w http.ResponseWriter, r *http.Request)
 	uid := r.PathValue("uid")
 	idToken := r.PathValue("idToken")
 
-	if rtr.config.firebaseApp == nil {
+	if err := MintIdToken(rtr, idToken); err != nil {
 		rtr.StatusError(w, http.StatusInternalServerError,
-			"update user profile data, firebaseApp is not initialized",
-			fmt.Errorf("firebaseApp is not initialized"))
-		return
-	}
-
-	client, err := rtr.config.firebaseApp.Auth(rtr.config.ctx)
-	if err != nil {
-		rtr.StatusError(w, http.StatusInternalServerError,
-			"update user profile data, error initializing client",
-			fmt.Errorf("error initializing client"))
-		return
-	}
-
-	_, err = client.VerifyIDToken(rtr.config.ctx, idToken)
-	if err != nil {
-		rtr.StatusError(w, http.StatusBadRequest,
-			"update user profile data, bad idToken",
-			fmt.Errorf("bad idToken"))
+			"update user profile data",
+			fmt.Errorf("error while trying to mint idToken: %v", err))
 		return
 	}
 
@@ -252,7 +222,7 @@ func (rtr *router) UpdateUserProfileData(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	err = UpdateUserDocument(rtr, uid, requestedUpdates)
+	err := UpdateUserDocument(rtr, uid, requestedUpdates)
 	if err != nil {
 		rtr.StatusError(w, http.StatusInternalServerError,
 			"updating user documents",
@@ -261,6 +231,62 @@ func (rtr *router) UpdateUserProfileData(w http.ResponseWriter, r *http.Request)
 	}
 
 	rtr.StatusOK(w, http.StatusOK, "successfully updated user data", requestedUpdates)
+}
+
+type NewUserRoutineRequest struct {
+	RoutineName string `json:"routineName"`
+	UID         string `json:"uid"`
+	IdToken     string `json:"idToken"`
+}
+
+func (rtr *router) CreateUserRoutine(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	reqRoutine := &NewUserRoutineRequest{}
+
+	if err := json.NewDecoder(r.Body).Decode(reqRoutine); err != nil {
+		rtr.StatusError(w, http.StatusInternalServerError, "create user routine", err)
+		return
+	}
+
+	if err := MintIdToken(rtr, reqRoutine.IdToken); err != nil {
+		rtr.StatusError(w, http.StatusInternalServerError,
+			"create user routine",
+			fmt.Errorf("error while trying to mint idToken: %v", err))
+		return
+	}
+
+	if err := CreateRoutineDocument(rtr, reqRoutine.UID, reqRoutine.RoutineName); err != nil {
+		rtr.StatusError(w, http.StatusInternalServerError,
+			"create user routine",
+			fmt.Errorf("error while create user routine: %v", err))
+		return
+	}
+
+	arbitratryReturnData := make(map[string]interface{})
+	rtr.StatusOK(w, http.StatusOK, "successfully created new routine for user", arbitratryReturnData)
+}
+
+func (rtr *router) GetUserRoutines(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	uid := r.PathValue("uid")
+	idToken := r.PathValue("idToken")
+
+	if err := MintIdToken(rtr, idToken); err != nil {
+		rtr.StatusError(w, http.StatusInternalServerError,
+			"getting user routines",
+			fmt.Errorf("error while trying to mint idToken while fetching user routines: %v", err))
+		return
+	}
+
+	routineDocuments, err := GetUserRoutines(rtr, uid)
+	if err != nil {
+		rtr.StatusError(w, http.StatusInternalServerError,
+			"update user profile data",
+			fmt.Errorf("error while trying to fetch user routines: %v", err))
+		return
+	}
+
+	rtr.StatusOK(w, http.StatusOK, "successfully fetched users routines", routineDocuments)
 }
 
 func initEnvironmentVariables() (map[string]string, error) {
