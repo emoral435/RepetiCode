@@ -153,8 +153,7 @@ func UpdateUserDocument(rtr *router, uid string, requestedUpdates map[string]int
 				formattedUpdates = append(formattedUpdates, firestore.Update{Path: key, Value: val})
 			}
 
-			_, err = docRef.Update(rtr.config.ctx, formattedUpdates)
-			if err != nil {
+			if _, err = docRef.Update(rtr.config.ctx, formattedUpdates); err != nil {
 				return fmt.Errorf("error while triyng to insert updates for user with UID (%s): %v", uid, err)
 			}
 
@@ -203,9 +202,7 @@ func CreateRoutineDocument(rtr *router, uid, routineName string) error {
 			Workouts:    []WorkoutDoc{},
 		}
 
-		_, _, err = client.Collection("routines").Add(rtr.config.ctx, newRoutineDoc)
-
-		if err != nil {
+		if _, _, err = client.Collection("routines").Add(rtr.config.ctx, newRoutineDoc); err != nil {
 			return fmt.Errorf("error while trying to create new routine document for user (uid: %s): %w", uid, err)
 		}
 
@@ -248,4 +245,71 @@ func GetUserRoutines(rtr *router, uid string) ([]map[string]interface{}, error) 
 	}
 
 	return rd, nil
+}
+
+func GetOneUserRoutine(rtr *router, routineRefId string) (map[string]interface{}, error) {
+	client, err := rtr.config.firebaseApp.Firestore(rtr.config.ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error while trying to initialize firestore client: %w", err)
+	}
+
+	defer func() {
+		err := client.Close()
+		if err != nil {
+			rtr.logger.Error("could not close firebase client")
+		}
+	}()
+
+	iter := client.Collection("routines").Documents(rtr.config.ctx)
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("error while iterating through the firestore user documents to retrieve documents: %w", err)
+		}
+
+		if doc.Ref.ID == routineRefId {
+			return doc.Data(), nil
+		}
+	}
+
+	return nil, fmt.Errorf("error while trying to find routine associated with routine ref, found nothing")
+}
+
+func UpdateOneUserRoutine(rtr *router, routineRefId string, routineUpdates map[string]interface{}) error {
+	client, err := rtr.config.firebaseApp.Firestore(rtr.config.ctx)
+	if err != nil {
+		return fmt.Errorf("error while trying to initialize firestore client: %w", err)
+	}
+
+	defer func() {
+		err := client.Close()
+		if err != nil {
+			rtr.logger.Error("could not close firebase client")
+		}
+	}()
+
+	iter := client.Collection("routines").Documents(rtr.config.ctx)
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("error while iterating through the firestore routine documents to retrieve routine: %w", err)
+		}
+
+		if doc.Ref.ID == routineRefId {
+			if _, err = doc.Ref.Set(rtr.config.ctx, routineUpdates); err != nil {
+				return fmt.Errorf("error while trying to insert updates for user's routine with routine ID (%s): %v", routineRefId, err)
+			}
+
+			return nil
+		}
+	}
+
+	return fmt.Errorf("error, did not find associated user's routine document for routine of %s within routines collection", routineRefId)
 }

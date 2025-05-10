@@ -112,3 +112,31 @@ func TestGetUserRoutines(t *testing.T) {
 		t.Logf("GetUserRoutines returned expected error: %v", err)
 	}
 }
+func TestGetOneUserRoutine(t *testing.T) {
+	rtr := setupTestRouter(t)
+
+	_, err := GetOneUserRoutine(rtr, "test-routine-123")
+
+	if err == nil {
+		t.Logf("GetOneUserRoutine returned a routine without error (unexpected without real Firestore)")
+	} else {
+		t.Logf("GetOneUserRoutine returned expected error: %v", err)
+	}
+}
+
+func TestUpdateOneUserRoutine(t *testing.T) {
+	rtr := setupTestRouter(t)
+
+	updates := map[string]interface{}{
+		"RoutineName": "Updated Push Day",
+		"UpdatedAt":   time.Now(),
+	}
+
+	err := UpdateOneUserRoutine(rtr, "test-routine-123", updates)
+
+	if err == nil {
+		t.Logf("UpdateOneUserRoutine updated a routine without error (unexpected without real Firestore)")
+	} else {
+		t.Logf("UpdateOneUserRoutine returned expected error: %v", err)
+	}
+}

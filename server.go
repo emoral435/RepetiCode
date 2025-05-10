@@ -29,7 +29,9 @@ func routes(cfg *config, logger *slog.Logger) *http.ServeMux {
 	m.HandleFunc("GET /api/v1/user/{uid}/{idToken}", r.GetUserProfileData)
 	m.HandleFunc("PUT /api/v1/user/{uid}/{idToken}", r.UpdateUserProfileData)
 	m.HandleFunc("POST /api/v1/user/routine/create", r.CreateUserRoutine)
-	m.HandleFunc("GET /api/v1/user/routine/{uid}/{idToken}", r.GetUserRoutines)
+	m.HandleFunc("GET /api/v1/user/routine/{uid}/{idToken}", r.GetAllUserRoutines)
+	m.HandleFunc("GET /api/v1/user/routine/single/{routineRefId}/{idToken}", r.GetOneUserRoutine)
+	m.HandleFunc("PUT /api/v1/user/routine/single/{routineRefId}/{idToken}", r.UpdateOneUserRoutine)
 
 	// catch-all routing solution for serving static React frontend with Go, handling React Router routing cases
 	// see: https://stackoverflow.com/a/64687181
@@ -222,8 +224,7 @@ func (rtr *router) UpdateUserProfileData(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	err := UpdateUserDocument(rtr, uid, requestedUpdates)
-	if err != nil {
+	if err := UpdateUserDocument(rtr, uid, requestedUpdates); err != nil {
 		rtr.StatusError(w, http.StatusInternalServerError,
 			"updating user documents",
 			fmt.Errorf("error while trying to update user document: %v", err.Error()))
@@ -256,7 +257,7 @@ func (rtr *router) CreateUserRoutine(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := CreateRoutineDocument(rtr, reqRoutine.UID, reqRoutine.RoutineName); err != nil {
-		rtr.StatusError(w, http.StatusInternalServerError,
+		rtr.StatusError(w, http.StatusBadRequest,
 			"create user routine",
 			fmt.Errorf("error while create user routine: %v", err))
 		return
@@ -266,7 +267,7 @@ func (rtr *router) CreateUserRoutine(w http.ResponseWriter, r *http.Request) {
 	rtr.StatusOK(w, http.StatusOK, "successfully created new routine for user", arbitratryReturnData)
 }
 
-func (rtr *router) GetUserRoutines(w http.ResponseWriter, r *http.Request) {
+func (rtr *router) GetAllUserRoutines(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	uid := r.PathValue("uid")
 	idToken := r.PathValue("idToken")
@@ -287,6 +288,58 @@ func (rtr *router) GetUserRoutines(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rtr.StatusOK(w, http.StatusOK, "successfully fetched users routines", routineDocuments)
+}
+
+func (rtr *router) GetOneUserRoutine(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	routineRefId := r.PathValue("routineRefId")
+	idToken := r.PathValue("idToken")
+
+	if err := MintIdToken(rtr, idToken); err != nil {
+		rtr.StatusError(w, http.StatusInternalServerError,
+			"getting user routines",
+			fmt.Errorf("error while trying to mint idToken while fetching user routines: %v", err))
+		return
+	}
+
+	routineDocumentData, err := GetOneUserRoutine(rtr, routineRefId)
+	if err != nil {
+		rtr.StatusError(w, http.StatusInternalServerError,
+			"getting one user routine",
+			fmt.Errorf("error while trying to fetch one user routine with associated routine id (%s): %v", routineRefId, err))
+		return
+	}
+
+	rtr.StatusOK(w, http.StatusOK, "successfully fetched users routines", routineDocumentData)
+}
+
+func (rtr *router) UpdateOneUserRoutine(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	routineRefId := r.PathValue("routineRefId")
+	idToken := r.PathValue("idToken")
+
+	if err := MintIdToken(rtr, idToken); err != nil {
+		rtr.StatusError(w, http.StatusInternalServerError,
+			"getting user routines",
+			fmt.Errorf("error while trying to mint idToken while fetching user routines: %v", err))
+		return
+	}
+
+	// if the ID token was valid, we update the user's routine with the new routine data
+	requestedUpdates := make(map[string]interface{})
+	if err := json.NewDecoder(r.Body).Decode(&requestedUpdates); err != nil {
+		rtr.StatusError(w, http.StatusInternalServerError, "update user document", err)
+		return
+	}
+
+	if err := UpdateOneUserRoutine(rtr, routineRefId, requestedUpdates); err != nil {
+		rtr.StatusError(w, http.StatusInternalServerError,
+			"updating user's routine documents",
+			fmt.Errorf("error while trying to update user's routine document: %v", err.Error()))
+		return
+	}
+
+	rtr.StatusOK(w, http.StatusOK, "successfully updated user's routine data", requestedUpdates)
 }
 
 func initEnvironmentVariables() (map[string]string, error) {

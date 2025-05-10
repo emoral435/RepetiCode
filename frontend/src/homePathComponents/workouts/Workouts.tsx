@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext";
 import { getAuth } from "firebase/auth";
 import type { RoutineDoc } from "../../lib/routines";
+import { CpuChipIcon } from "@heroicons/react/24/outline";
 
 interface WorkoutRoutinesProps {
   dataPromise: Promise<RoutineDoc[]>;
@@ -103,8 +104,15 @@ const Workouts = ({ dataPromise }: WorkoutRoutinesProps) => {
         style={{ background: cssThemes.colors.primary }}
         className="border-4 w-[90%] max-w-4xl flex flex-col items-center rounded-2xl shadow-xl p-8 gap-8 text-center"
       >
-        <div className="w-full flex flex-col sm:flex-row justify-between items-center gap-4 relative">
-          <h1 className="text-4xl font-extrabold drop-shadow-lg">Workout Routines</h1>
+        <section
+          style={{ background: cssThemes.colors.background }} 
+          className="w-full flex flex-col sm:flex-row justify-between items-center gap-4 relative border-4 rounded-2xl px-4 py-2"
+        >
+          <h1 className="text-4xl font-extrabold drop-shadow-lg flex justify-between items-center gap-4">
+            <CpuChipIcon width={50} />
+            <p>Workout Routines</p>
+            <CpuChipIcon width={50} />
+          </h1>
 
           <div className="relative flex flex-col items-center">
             <button
@@ -128,7 +136,7 @@ const Workouts = ({ dataPromise }: WorkoutRoutinesProps) => {
                   value={routineName}
                   onChange={(e) => setRoutineName(e.target.value)}
                   placeholder="Enter routine name"
-                  className="w-full p-2 rounded border text-black"
+                  className="w-full p-2 rounded border"
                 />
                 <div className="flex justify-end mt-2 gap-2">
                   <button
@@ -148,7 +156,7 @@ const Workouts = ({ dataPromise }: WorkoutRoutinesProps) => {
               </div>
             )}
           </div>
-        </div>
+        </section>
 
         {errorMessage && (
           <div className="text-red-600 text-center text-sm font-semibold w-full">
@@ -168,7 +176,7 @@ const Workouts = ({ dataPromise }: WorkoutRoutinesProps) => {
               <p className="text-sm mt-1">Since: {routine.CreatedAt.slice(0, 10)}</p>
               <span
                 style={{ background: cssThemes.colors.secondary }}
-                className="mt-4 px-4 py-2 rounded-xl text-white font-semibold shadow hover:shadow-md transition"
+                className="mt-4 px-4 py-2 border-2 rounded-xl font-semibold shadow hover:shadow-md transition"
               >
                 View Routine
               </span>

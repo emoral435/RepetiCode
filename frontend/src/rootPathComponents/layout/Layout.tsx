@@ -15,6 +15,7 @@ const Layout = () => {
   const currentYear = new Date().getFullYear();
 
   const userProtectedNavs = [
+    { navName: "Home", linkTo: "/home" },
     { navName: "Profile", linkTo: "/home/profile" },
     { navName: "Workouts", linkTo: "/home/workouts" },
   ];
