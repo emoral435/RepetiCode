@@ -179,7 +179,58 @@ func TestGetUserRoutinesEndpoint_FirebaseNil(t *testing.T) {
 	req.SetPathValue("idToken", "fake-token")
 	w := httptest.NewRecorder()
 
-	r.GetUserRoutines(w, req)
+	r.GetAllUserRoutines(w, req)
+
+	resp := w.Result()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("Expected 500 for nil Firebase client, got %d", resp.StatusCode)
+	}
+}
+
+func TestGetOneUserRoutineEndpoint_FirebaseNil(t *testing.T) {
+	r := getTestRouter()
+
+	req := httptest.NewRequest("GET", "/api/v1/user/routine/single/fake-routine-id/fake-token", nil)
+	req.SetPathValue("routineRefId", "fake-routine-id")
+	req.SetPathValue("idToken", "fake-token")
+
+	w := httptest.NewRecorder()
+	r.GetOneUserRoutine(w, req)
+
+	resp := w.Result()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("Expected 500 for nil Firebase client, got %d", resp.StatusCode)
+	}
+}
+
+func TestUpdateOneUserRoutineEndpoint_FirebaseNil(t *testing.T) {
+	r := getTestRouter()
+
+	body := map[string]interface{}{
+		"RoutineName": "Updated Routine",
+	}
+	bodyBytes, _ := json.Marshal(body)
+
+	req := httptest.NewRequest("PUT", "/api/v1/user/routine/single/fake-routine-id/fake-token", bytes.NewReader(bodyBytes))
+	req.SetPathValue("routineRefId", "fake-routine-id")
+	req.SetPathValue("idToken", "fake-token")
+
+	w := httptest.NewRecorder()
+	r.UpdateOneUserRoutine(w, req)
 
 	resp := w.Result()
 	defer func() {
